@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# verification builds (see next.config.ts distDir)
+/.next-build/
+
+# local HTTPS dev certificates (npm run dev:https)
+/certificates/
