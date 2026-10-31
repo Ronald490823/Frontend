@@ -7,7 +7,7 @@ export const normalizeStateCode = (v: string) => v.replace(/\s+/g, "").toUpperCa
 
 export const passwordSchema = z
   .string()
-  .min(10, "Use at least 10 characters.")
+  .min(8, "Use at least 8 characters.")
   .max(128, "Use at most 128 characters.")
   .regex(/[A-Za-z]/, "Include at least one letter.")
   .regex(/\d/, "Include at least one number.");

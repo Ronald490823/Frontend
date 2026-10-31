@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { forwardRef, useId } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { forwardRef, useId, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const controlClass =
@@ -66,6 +67,41 @@ export const TextField = forwardRef<HTMLInputElement, InputProps>(function TextF
         className={cn(controlClass, "h-12", className)}
         {...props}
       />
+    </FieldShell>
+  );
+});
+
+/** Password input with a show/hide eye toggle. Type is managed internally, so callers omit it. */
+export const PasswordField = forwardRef<HTMLInputElement, Omit<InputProps, "type">>(function PasswordField(
+  { label, error, hint, id, className, ...props },
+  ref,
+) {
+  const autoId = useId();
+  const fieldId = id ?? autoId;
+  const [visible, setVisible] = useState(false);
+  return (
+    <FieldShell label={label} error={error} hint={hint} id={fieldId}>
+      <div className="relative">
+        <input
+          ref={ref}
+          id={fieldId}
+          type={visible ? "text" : "password"}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
+          className={cn(controlClass, "h-12 pr-12", className)}
+          {...props}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+          tabIndex={-1}
+          className="absolute right-2.5 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted transition-colors hover:bg-ink/5 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/70"
+        >
+          {visible ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+        </button>
+      </div>
     </FieldShell>
   );
 });

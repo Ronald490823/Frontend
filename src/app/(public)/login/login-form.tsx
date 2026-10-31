@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { RevealText } from "@/components/motion/reveal-text";
 import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/ui/field";
+import { PasswordField, TextField } from "@/components/ui/field";
 import { useLogin } from "@/features/auth/hooks";
 import { applyServerErrors } from "@/hooks/use-form-errors";
 import { homePathFor } from "@/lib/permissions";
@@ -73,9 +73,8 @@ export function LoginForm() {
           error={errors.identifier?.message}
           {...form.register("identifier")}
         />
-        <TextField
+        <PasswordField
           label="Password"
-          type="password"
           autoComplete="current-password"
           error={errors.password?.message}
           {...form.register("password")}

@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useForm, type Path } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { SelectField, TextField } from "@/components/ui/field";
+import { PasswordField, SelectField, TextField } from "@/components/ui/field";
 import { Loader } from "@/components/ui/loader";
 import { usePublicGroups, useRegister } from "@/features/auth/hooks";
 import { applyServerErrors } from "@/hooks/use-form-errors";
@@ -18,7 +18,7 @@ import { registerSchema, type RegisterInput, type RegisterValues } from "@/lib/v
 const STEPS: { title: string; subtitle: string; fields: Path<RegisterInput>[] }[] = [
   { title: "About you", subtitle: "As it appears on your NYSC documents.", fields: ["fullName", "email", "phone"] },
   { title: "Your CDS group", subtitle: "Your group executive will approve your request.", fields: ["stateCode", "groupId"] },
-  { title: "Secure your account", subtitle: "At least 10 characters, with letters and numbers.", fields: ["password", "confirmPassword", "consent"] },
+  { title: "Secure your account", subtitle: "At least 8 characters, with letters and numbers.", fields: ["password", "confirmPassword", "consent"] },
 ];
 
 export function RegisterForm() {
@@ -165,10 +165,9 @@ export function RegisterForm() {
             )}
             {step === 2 && (
               <>
-                <TextField label="Password" type="password" autoComplete="new-password" error={errors.password?.message} {...form.register("password")} />
-                <TextField
+                <PasswordField label="Password" autoComplete="new-password" error={errors.password?.message} {...form.register("password")} />
+                <PasswordField
                   label="Confirm password"
-                  type="password"
                   autoComplete="new-password"
                   error={errors.confirmPassword?.message}
                   {...form.register("confirmPassword")}
