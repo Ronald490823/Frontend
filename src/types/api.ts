@@ -93,7 +93,7 @@ export interface ApiErrorBody {
 
 export type SessionStatus = "scheduled" | "active" | "closed" | "archived" | "cancelled";
 export type AttendanceStatus = "present" | "late" | "absent" | "excused";
-export type VerificationMethod = "qr" | "manual";
+export type VerificationMethod = "qr" | "manual" | "location";
 
 export interface CdsSession {
   id: string;
@@ -140,6 +140,17 @@ export interface AttendanceRecord {
 export interface CheckInResult extends AttendanceRecord {
   sessionTitle: string;
   groupName: string;
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  readAt: string | null;
+  createdAt: string;
 }
 
 export interface MyAttendanceItem {

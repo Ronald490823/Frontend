@@ -1,9 +1,9 @@
 "use client";
 
-import { CalendarCheck2, ChevronLeft, ChevronRight, PencilLine, Smartphone } from "lucide-react";
+import { CalendarCheck2, ChevronLeft, ChevronRight, Navigation, PencilLine, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { QrScanner } from "@/components/attendance/qr-scanner";
+import { CheckInPanel } from "@/components/attendance/check-in-panel";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { AttendanceBadge } from "@/components/sessions/status";
@@ -28,7 +28,7 @@ export default function AttendancePage() {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
         <div>
           {hasGroup ? (
-            <QrScanner />
+            <CheckInPanel />
           ) : (
             <Card>
               <EmptyState
@@ -71,7 +71,13 @@ export default function AttendancePage() {
                       className="flex items-center gap-4 rounded-3xl bg-white p-4 shadow-soft ring-1 ring-hairline transition-shadow hover:shadow-lift"
                     >
                       <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface text-brand">
-                        {item.method === "qr" ? <Smartphone className="size-5" aria-label="Scanned QR" /> : <PencilLine className="size-5" aria-label="Recorded by executive" />}
+                        {item.method === "qr" ? (
+                          <Smartphone className="size-5" aria-label="Scanned QR" />
+                        ) : item.method === "location" ? (
+                          <Navigation className="size-5" aria-label="Checked in by location" />
+                        ) : (
+                          <PencilLine className="size-5" aria-label="Recorded by executive" />
+                        )}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{item.sessionTitle}</p>

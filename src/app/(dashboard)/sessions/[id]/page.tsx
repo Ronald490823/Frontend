@@ -1,13 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, History, MapPin, PencilLine, QrCode, Search, ShieldCheck, Smartphone } from "lucide-react";
+import { ArrowLeft, Clock, History, MapPin, Navigation, PencilLine, QrCode, Search, ShieldCheck, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageContainer } from "@/components/layout/page-header";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { RevealText } from "@/components/motion/reveal-text";
+import { EditSessionDialog } from "@/components/sessions/edit-session-dialog";
 import { HistoryDialog } from "@/components/sessions/history-dialog";
 import { ManualAttendanceDialog } from "@/components/sessions/manual-attendance-dialog";
 import { QrPanel } from "@/components/sessions/qr-panel";
@@ -49,6 +50,8 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
 function SessionDetail({ session: s }: { session: CdsSession }) {
   const live = s.status === "active";
+  const [editing, setEditing] = useState(false);
+  const canEdit = s.canManage && (s.status === "scheduled" || s.status === "active");
   // Announce a scheduled → live flip that happened by itself (shares an id with "Start now").
   const prevStatus = useRef(s.status);
   useEffect(() => {
@@ -88,8 +91,19 @@ function SessionDetail({ session: s }: { session: CdsSession }) {
             )}
           </div>
         </div>
-        {s.canManage && <SessionControls session={s} />}
+        {s.canManage && (
+          <div className="flex flex-wrap gap-2">
+            {canEdit && (
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                <PencilLine className="size-4" aria-hidden /> Edit
+              </Button>
+            )}
+            <SessionControls session={s} />
+          </div>
+        )}
       </header>
+
+      {canEdit && <EditSessionDialog open={editing} onClose={() => setEditing(false)} session={s} />}
 
       {s.canManage ? (
         <ManagerView session={s} roster={roster} />
@@ -270,7 +284,13 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
                     {e.attendance && (
                       <>
                         <span aria-hidden>·</span>
-                        {e.attendance.method === "qr" ? <Smartphone className="size-3" aria-label="QR" /> : <PencilLine className="size-3" aria-label="Manual" />}
+                        {e.attendance.method === "qr" ? (
+                          <Smartphone className="size-3" aria-label="QR" />
+                        ) : e.attendance.method === "location" ? (
+                          <Navigation className="size-3" aria-label="Location" />
+                        ) : (
+                          <PencilLine className="size-3" aria-label="Manual" />
+                        )}
                         {formatTime(e.attendance.checkedInAt)}
                       </>
                     )}

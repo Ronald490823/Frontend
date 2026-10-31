@@ -24,6 +24,26 @@ export function useCheckIn() {
   });
 }
 
+export interface LocationCheckInInput {
+  latitude: number;
+  longitude: number;
+  accuracyM?: number;
+}
+
+/** GPS self check-in (no QR). The server finds the member's active session and verifies location. */
+export function useLocationCheckIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: LocationCheckInInput) => (await api.post<CheckInResult>("/attendance/checkin/location", input)).data,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["attendance", "me"] });
+      void qc.invalidateQueries({ queryKey: ["sessions"] });
+    },
+    // The check-in panel owns all feedback (location prompts, out-of-bounds, etc.).
+    meta: { silentError: true },
+  });
+}
+
 export function useMyAttendance(page: number) {
   return useQuery({
     queryKey: ["attendance", "me", page],

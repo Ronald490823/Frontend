@@ -11,6 +11,7 @@ import { canManageMembers, isAreaAdmin, primaryRoleLabel } from "@/lib/permissio
 import { cn } from "@/lib/utils";
 import type { Me } from "@/types/api";
 import { Brand } from "./brand";
+import { NotificationBell } from "./notification-bell";
 
 type NavItem = { href: string; label: string; icon: typeof LayoutGrid; show: (me: Me) => boolean };
 
@@ -30,6 +31,8 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
   const logout = useLogout();
   const items = NAV.filter((n) => n.show(me));
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  // Notifications are only ever generated for approved group members.
+  const showBell = me.membership?.status === "approved";
 
   async function signOut() {
     await logout.mutateAsync().catch(() => undefined);
@@ -76,6 +79,7 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
             <p className="truncate text-sm font-medium">{me.fullName}</p>
             <p className="truncate text-xs text-muted">{primaryRoleLabel(me)}</p>
           </div>
+          {showBell && <NotificationBell placement="top" />}
           <button
             type="button"
             onClick={signOut}
@@ -91,9 +95,12 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
       {/* Mobile top bar */}
       <header className="glass sticky top-0 z-30 flex h-14 items-center justify-between border-b border-hairline px-4 lg:hidden">
         <Brand href="/dashboard" />
-        <button type="button" onClick={signOut} aria-label="Sign out" className="grid size-9 place-items-center rounded-full hover:bg-ink/5">
-          <LogOut className="size-4" aria-hidden />
-        </button>
+        <div className="flex items-center gap-1">
+          {showBell && <NotificationBell />}
+          <button type="button" onClick={signOut} aria-label="Sign out" className="grid size-9 place-items-center rounded-full hover:bg-ink/5">
+            <LogOut className="size-4" aria-hidden />
+          </button>
+        </div>
       </header>
 
       <div className="min-w-0 pb-28 lg:pb-0">{children}</div>
