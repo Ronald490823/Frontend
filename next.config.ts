@@ -3,7 +3,7 @@ import { networkInterfaces } from "node:os";
 
 // The browser always talks to /api/* on this origin; Next proxies to FastAPI.
 // This keeps auth cookies first-party and the backend address server-side only.
-const apiOrigin = process.env.API_ORIGIN ?? "http://127.0.0.1:8000";
+const apiOrigin = process.env.API_ORIGIN ?? "https://attendance-backend-hsj6.onrender.com";
 
 // Dev only: let phones/laptops on the same network load the dev server (Next 15 restricts
 // cross-origin dev requests). Production is unaffected.

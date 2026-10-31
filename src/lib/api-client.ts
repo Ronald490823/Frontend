@@ -8,7 +8,7 @@ import { toApiError } from "./api-errors";
  * - Rejects with ApiError so callers never see raw Axios errors.
  */
 export const api = axios.create({
-  baseURL: "/api/v1",
+  baseURL:  process.env.API_URL,
   withCredentials: true,
   timeout: 15_000,
   headers: { "Content-Type": "application/json" },
@@ -27,11 +27,17 @@ let csrfToken: string | null = null;
 let csrfInFlight: Promise<string> | null = null;
 
 function ensureCsrf(force = false): Promise<string> {
-  if (csrfToken && !force) return Promise.resolve(csrfToken);
-  csrfInFlight ??= axios
-    .get<{ csrfToken: string }>("/api/v1/auth/csrf", { withCredentials: true })
+  if (csrfToken && !force) {
+    return Promise.resolve(csrfToken);
+  }
+
+  csrfInFlight ??= api
+    .get<{ csrfToken: string }>("/auth/csrf")
     .then((r) => (csrfToken = r.data.csrfToken))
-    .finally(() => (csrfInFlight = null));
+    .finally(() => {
+      csrfInFlight = null;
+    });
+
   return csrfInFlight;
 }
 
