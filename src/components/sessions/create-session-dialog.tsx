@@ -1,14 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LocateFixed, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { SessionFields } from "@/components/sessions/session-fields";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { SelectField, TextField } from "@/components/ui/field";
+import { SelectField } from "@/components/ui/field";
 import { useCreateSession } from "@/features/sessions/hooks";
 import { applyServerErrors } from "@/hooks/use-form-errors";
 import { toApiError } from "@/lib/api-errors";
@@ -52,9 +52,6 @@ export function CreateSessionDialog({ open, onClose, groups }: Props) {
     },
   });
   const { errors } = form.formState;
-  const useGeofence = form.watch("useGeofence");
-  const latitude = form.watch("latitude");
-  const radius = form.watch("radiusM");
 
   // Fresh, sensible times every time the dialog opens.
   useEffect(() => {
@@ -136,55 +133,7 @@ export function CreateSessionDialog({ open, onClose, groups }: Props) {
             ))}
           </SelectField>
         )}
-        <TextField label="Title" error={errors.title?.message} {...form.register("title")} />
-        <TextField label="Venue (optional)" placeholder="LGA Secretariat Hall" error={errors.venue?.message} {...form.register("venue")} />
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-3 sm:col-span-1">
-            <TextField label="Date" type="date" error={errors.date?.message} {...form.register("date")} />
-          </div>
-          <TextField label="Starts" type="time" error={errors.startTime?.message} {...form.register("startTime")} />
-          <TextField label="Ends" type="time" error={errors.endTime?.message} {...form.register("endTime")} />
-        </div>
-        <TextField
-          label="Late after (minutes)"
-          type="number"
-          min={0}
-          max={240}
-          hint="Check-ins this long after you start the session are marked late."
-          error={errors.lateAfterMinutes?.message}
-          {...form.register("lateAfterMinutes")}
-        />
-
-        <div className="rounded-2xl bg-canvas p-4 ring-1 ring-hairline">
-          <label className="flex items-start gap-3">
-            <input type="checkbox" className="mt-1 size-4 accent-brand" {...form.register("useGeofence")} />
-            <span>
-              <span className="block text-sm font-medium">Check members are at the venue</span>
-              <span className="block text-[13px] text-muted">
-                Members share their location when they scan. GPS can be inaccurate or spoofed, so treat it as supporting evidence.
-              </span>
-            </span>
-          </label>
-          {useGeofence && (
-            <div className="mt-4 space-y-4">
-              <Button variant="secondary" size="sm" onClick={captureLocation} loading={locating} loadingLabel="Locating…">
-                {!locating && (latitude !== null ? <MapPin className="size-4" aria-hidden /> : <LocateFixed className="size-4" aria-hidden />)}
-                {latitude !== null ? "Location captured — update" : "Use my current location as the venue"}
-              </Button>
-              <div>
-                <label htmlFor="radius" className="flex justify-between text-[13px] font-medium text-ink/80">
-                  Allowed radius <span className="tabular-nums text-muted">{radius} m</span>
-                </label>
-                <input id="radius" type="range" min={20} max={1000} step={10} className="mt-2 w-full accent-brand" {...form.register("radiusM")} />
-              </div>
-            </div>
-          )}
-          {errors.useGeofence && (
-            <p role="alert" className="mt-2 text-[13px] text-rose-600">
-              {errors.useGeofence.message}
-            </p>
-          )}
-        </div>
+        <SessionFields form={form} locating={locating} onCaptureLocation={captureLocation} />
 
         {errors.root?.message && (
           <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-700">

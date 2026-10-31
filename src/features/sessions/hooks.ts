@@ -58,6 +58,20 @@ export function useCreateSession() {
   });
 }
 
+/** Editable fields of an existing session. The group can't be changed after creation. */
+export type SessionUpdateInput = Omit<SessionInput, "groupId">;
+
+export function useUpdateSession(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SessionUpdateInput) => (await api.patch<CdsSession>(`/sessions/${id}`, input)).data,
+    onSuccess: (session) => {
+      qc.setQueryData(["session", id], session);
+      void qc.invalidateQueries({ queryKey: ["sessions"] });
+    },
+  });
+}
+
 export type SessionAction = "start" | "close" | "archive" | "cancel";
 
 export function useSessionAction(id: string) {
