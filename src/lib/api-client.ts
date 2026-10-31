@@ -8,7 +8,7 @@ import { toApiError } from "./api-errors";
  * - Rejects with ApiError so callers never see raw Axios errors.
  */
 export const api = axios.create({
-  baseURL:  process.env.API_URL,
+  baseURL: "/api/v1",
   withCredentials: true,
   timeout: 15_000,
   headers: { "Content-Type": "application/json" },
