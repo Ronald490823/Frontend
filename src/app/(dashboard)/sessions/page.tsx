@@ -10,6 +10,7 @@ import { AttendanceBadge, SessionBadge } from "@/components/sessions/status";
 import { Button } from "@/components/ui/button";
 import { Card, EmptyState, Skeleton } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
+import { SelectField } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
 import { useMe } from "@/features/auth/hooks";
 import { useManagedGroups } from "@/features/groups/hooks";
@@ -32,7 +33,8 @@ export default function SessionsPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
-  const sessions = useSessions({ status: filter === "all" ? undefined : filter, page });
+  const [groupId, setGroupId] = useState("");
+  const sessions = useSessions({ status: filter === "all" ? undefined : filter, page, groupId: groupId || undefined });
 
   const areaAdmin = isAreaAdmin(me);
   const managed = useManagedGroups(areaAdmin);
@@ -59,7 +61,7 @@ export default function SessionsPage() {
         }
       />
 
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <Segmented
           label="Filter sessions"
           value={filter}
@@ -69,6 +71,26 @@ export default function SessionsPage() {
           }}
           options={FILTERS}
         />
+        {areaAdmin && (
+          <div className="sm:w-64">
+            <SelectField
+              label="Group"
+              value={groupId}
+              onChange={(e) => {
+                setGroupId(e.target.value);
+                setPage(1);
+              }}
+              disabled={managed.isPending}
+            >
+              <option value="">All groups</option>
+              {managed.data?.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+        )}
       </div>
 
       {sessions.isPending ? (

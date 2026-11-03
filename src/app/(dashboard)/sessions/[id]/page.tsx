@@ -1,7 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, History, MapPin, Navigation, PencilLine, QrCode, Search, ShieldCheck, Smartphone } from "lucide-react";
+import {
+  ArrowLeft,
+  Clock,
+  History,
+  MapPin,
+  Navigation,
+  PencilLine,
+  QrCode,
+  Search,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 import Link from "next/link";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -19,28 +30,80 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorState } from "@/components/ui/error-state";
 import { FullPageLoader, Loader } from "@/components/ui/loader";
 import { useMe } from "@/features/auth/hooks";
-import { type SessionAction, useRoster, useSession, useSessionAction } from "@/features/sessions/hooks";
-import { formatRelative, formatSessionWindow, formatTime, initials } from "@/lib/formatters";
+import {
+  type SessionAction,
+  useRoster,
+  useSession,
+  useSessionAction,
+} from "@/features/sessions/hooks";
+import {
+  formatRelative,
+  formatSessionWindow,
+  formatTime,
+  initials,
+} from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { CdsSession, Roster, RosterEntry } from "@/types/api";
 
-const ACTION_COPY: Record<SessionAction, { title: string; body: string; label: string; tone: "primary" | "danger"; done: string }> = {
-  start: { title: "Start this session?", body: "Members can check in as soon as you show the QR code.", label: "Start session", tone: "primary", done: "Session started — show the code" },
-  close: { title: "Close this session?", body: "The QR code stops working immediately. You can still correct attendance afterwards.", label: "Close session", tone: "danger", done: "Session closed" },
-  archive: { title: "Archive this session?", body: "Archived sessions are read-only. Attendance can no longer be corrected.", label: "Archive", tone: "danger", done: "Session archived" },
-  cancel: { title: "Cancel this session?", body: "Members will see it as cancelled. This can't be undone.", label: "Cancel session", tone: "danger", done: "Session cancelled" },
+const ACTION_COPY: Record<
+  SessionAction,
+  {
+    title: string;
+    body: string;
+    label: string;
+    tone: "primary" | "danger";
+    done: string;
+  }
+> = {
+  start: {
+    title: "Start this session?",
+    body: "Members can check in as soon as you show the QR code.",
+    label: "Start session",
+    tone: "primary",
+    done: "Session started — show the code",
+  },
+  close: {
+    title: "Close this session?",
+    body: "The QR code stops working immediately. You can still correct attendance afterwards.",
+    label: "Close session",
+    tone: "danger",
+    done: "Session closed",
+  },
+  archive: {
+    title: "Archive this session?",
+    body: "Archived sessions are read-only. Attendance can no longer be corrected.",
+    label: "Archive",
+    tone: "danger",
+    done: "Session archived",
+  },
+  cancel: {
+    title: "Cancel this session?",
+    body: "Members will see it as cancelled. This can't be undone.",
+    label: "Cancel session",
+    tone: "danger",
+    done: "Session cancelled",
+  },
 };
 
-export default function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function SessionDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const session = useSession(id);
 
   if (session.isPending) return <FullPageLoader label="Loading session…" />;
-  if (session.isError) {
+  // Only without data: a failed poll keeps showing the session (and any open dialog).
+  if (!session.data) {
     return (
       <PageContainer>
         <Card>
-          <ErrorState error={session.error} onRetry={() => session.refetch()} retrying={session.isFetching} />
+          <ErrorState
+            error={session.error}
+            onRetry={() => session.refetch()}
+            retrying={session.isFetching}
+          />
         </Card>
       </PageContainer>
     );
@@ -51,20 +114,31 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 function SessionDetail({ session: s }: { session: CdsSession }) {
   const live = s.status === "active";
   const [editing, setEditing] = useState(false);
-  const canEdit = s.canManage && (s.status === "scheduled" || s.status === "active");
+  const canEdit =
+    s.canManage && (s.status === "scheduled" || s.status === "active");
   // Announce a scheduled → live flip that happened by itself (shares an id with "Start now").
   const prevStatus = useRef(s.status);
   useEffect(() => {
     if (prevStatus.current === "scheduled" && s.status === "active") {
-      toast.success(s.canManage ? "Session is live — show the code" : "Check-in is open", { id: "session-live" });
+      toast.success(
+        s.canManage ? "Session is live — show the code" : "Check-in is open",
+        { id: "session-live" },
+      );
     }
     prevStatus.current = s.status;
   }, [s.status, s.canManage]);
-  const roster = useRoster(s.id, { enabled: s.canManage && s.status !== "scheduled" && s.status !== "cancelled", live });
+  const roster = useRoster(s.id, {
+    enabled:
+      s.canManage && s.status !== "scheduled" && s.status !== "cancelled",
+    live,
+  });
 
   return (
     <PageContainer>
-      <Link href="/sessions" className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-ink">
+      <Link
+        href="/sessions"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-ink"
+      >
         <ArrowLeft className="size-4" aria-hidden /> Sessions
       </Link>
 
@@ -74,10 +148,14 @@ function SessionDetail({ session: s }: { session: CdsSession }) {
             <SessionBadge status={s.status} />
             <span className="text-sm text-muted">{s.groupName}</span>
           </div>
-          <RevealText text={s.title} className="text-3xl font-semibold tracking-[-0.04em] sm:text-[2.6rem] sm:leading-[1.1]" />
+          <RevealText
+            text={s.title}
+            className="text-3xl font-semibold tracking-[-0.04em] sm:text-[2.6rem] sm:leading-[1.1]"
+          />
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
             <span className="inline-flex items-center gap-1.5">
-              <Clock className="size-4" aria-hidden /> {formatSessionWindow(s.scheduledStart, s.scheduledEnd)}
+              <Clock className="size-4" aria-hidden />{" "}
+              {formatSessionWindow(s.scheduledStart, s.scheduledEnd)}
             </span>
             {s.venue && (
               <span className="inline-flex items-center gap-1.5">
@@ -86,7 +164,8 @@ function SessionDetail({ session: s }: { session: CdsSession }) {
             )}
             {s.requiresLocation && (
               <span className="inline-flex items-center gap-1.5">
-                <ShieldCheck className="size-4" aria-hidden /> Location check within {s.radiusM} m
+                <ShieldCheck className="size-4" aria-hidden /> Location check
+                within {s.radiusM} m
               </span>
             )}
           </div>
@@ -103,7 +182,13 @@ function SessionDetail({ session: s }: { session: CdsSession }) {
         )}
       </header>
 
-      {canEdit && <EditSessionDialog open={editing} onClose={() => setEditing(false)} session={s} />}
+      {canEdit && (
+        <EditSessionDialog
+          open={editing}
+          onClose={() => setEditing(false)}
+          session={s}
+        />
+      )}
 
       {s.canManage ? (
         <ManagerView session={s} roster={roster} />
@@ -118,12 +203,20 @@ function SessionControls({ session: s }: { session: CdsSession }) {
   const act = useSessionAction(s.id);
   const [pending, setPending] = useState<SessionAction | null>(null);
   const available: SessionAction[] =
-    s.status === "scheduled" ? ["cancel", "start"] : s.status === "active" ? ["close"] : s.status === "closed" ? ["archive"] : [];
+    s.status === "scheduled"
+      ? ["cancel", "start"]
+      : s.status === "active"
+        ? ["close"]
+        : s.status === "closed"
+          ? ["archive"]
+          : [];
   if (!available.length) return null;
 
   async function run(action: SessionAction) {
     await act.mutateAsync(action);
-    toast.success(ACTION_COPY[action].done, { id: action === "start" ? "session-live" : undefined });
+    toast.success(ACTION_COPY[action].done, {
+      id: action === "start" ? "session-live" : undefined,
+    });
     setPending(null);
   }
 
@@ -134,7 +227,9 @@ function SessionControls({ session: s }: { session: CdsSession }) {
           key={a}
           variant={a === "start" ? "primary" : "secondary"}
           // Starting is safe and reversible by closing; only destructive actions confirm.
-          onClick={() => (a === "start" ? void run(a).catch(() => undefined) : setPending(a))}
+          onClick={() =>
+            a === "start" ? void run(a).catch(() => undefined) : setPending(a)
+          }
           loading={a === "start" && act.isPending}
           loadingLabel="Starting…"
         >
@@ -157,7 +252,13 @@ function SessionControls({ session: s }: { session: CdsSession }) {
 
 type RosterQuery = ReturnType<typeof useRoster>;
 
-function ManagerView({ session: s, roster }: { session: CdsSession; roster: RosterQuery }) {
+function ManagerView({
+  session: s,
+  roster,
+}: {
+  session: CdsSession;
+  roster: RosterQuery;
+}) {
   if (s.status === "scheduled") {
     return (
       <Card>
@@ -172,17 +273,31 @@ function ManagerView({ session: s, roster }: { session: CdsSession; roster: Rost
   if (s.status === "cancelled") {
     return (
       <Card>
-        <EmptyState icon={<QrCode className="size-6" />} title="This session was cancelled" body="No attendance was taken." />
+        <EmptyState
+          icon={<QrCode className="size-6" />}
+          title="This session was cancelled"
+          body="No attendance was taken."
+        />
       </Card>
     );
   }
   const summary = roster.data?.summary;
   const checkedIn = summary ? summary.present + summary.late : 0;
   return (
-    <div className={cn("grid gap-6", s.status === "active" && "lg:grid-cols-[22rem_minmax(0,1fr)]")}>
+    <div
+      className={cn(
+        "grid gap-6",
+        s.status === "active" && "lg:grid-cols-[22rem_minmax(0,1fr)]",
+      )}
+    >
       {s.status === "active" && (
         <div className="lg:sticky lg:top-8 lg:self-start">
-          <QrPanel sessionId={s.id} title={s.title} checkedIn={checkedIn} eligible={summary?.eligible ?? 0} />
+          <QrPanel
+            sessionId={s.id}
+            title={s.title}
+            checkedIn={checkedIn}
+            eligible={summary?.eligible ?? 0}
+          />
         </div>
       )}
       <RosterView session={s} roster={roster} />
@@ -190,18 +305,37 @@ function ManagerView({ session: s, roster }: { session: CdsSession; roster: Rost
   );
 }
 
-function SummaryTile({ label, value, tone }: { label: string; value: number; tone: string }) {
+function SummaryTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: string;
+}) {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-soft ring-1 ring-hairline">
       <p className="text-xs font-medium text-muted">{label}</p>
-      <p className={cn("mt-1 text-3xl font-semibold tracking-tight tabular-nums", tone)}>
+      <p
+        className={cn(
+          "mt-1 text-3xl font-semibold tracking-tight tabular-nums",
+          tone,
+        )}
+      >
         <AnimatedNumber value={value} />
       </p>
     </div>
   );
 }
 
-function RosterView({ session: s, roster }: { session: CdsSession; roster: RosterQuery }) {
+function RosterView({
+  session: s,
+  roster,
+}: {
+  session: CdsSession;
+  roster: RosterQuery;
+}) {
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<RosterEntry | null>(null);
   const [history, setHistory] = useState<RosterEntry | null>(null);
@@ -212,9 +346,19 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
   const entries = useMemo(() => {
     const list = roster.data?.entries ?? [];
     const needle = q.trim().toLowerCase();
-    const filtered = needle ? list.filter((e) => e.fullName.toLowerCase().includes(needle) || e.stateCode.toLowerCase().includes(needle)) : list;
+    const filtered = needle
+      ? list.filter(
+          (e) =>
+            e.fullName.toLowerCase().includes(needle) ||
+            e.stateCode.toLowerCase().includes(needle),
+        )
+      : list;
     // Most recent check-ins first, then everyone not yet recorded.
-    return [...filtered].sort((a, b) => (b.attendance?.checkedInAt ?? "").localeCompare(a.attendance?.checkedInAt ?? ""));
+    return [...filtered].sort((a, b) =>
+      (b.attendance?.checkedInAt ?? "").localeCompare(
+        a.attendance?.checkedInAt ?? "",
+      ),
+    );
   }, [roster.data, q]);
 
   if (roster.isPending) {
@@ -229,10 +373,16 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
       </div>
     );
   }
-  if (roster.isError) {
+  // Only without data: a failed background poll must not tear down the roster, or an open
+  // dialog with it (and whatever was being typed). The next poll recovers on its own.
+  if (roster.isError && !roster.data) {
     return (
       <Card>
-        <ErrorState error={roster.error} onRetry={() => roster.refetch()} retrying={roster.isFetching} />
+        <ErrorState
+          error={roster.error}
+          onRetry={() => roster.refetch()}
+          retrying={roster.isFetching}
+        />
       </Card>
     );
   }
@@ -241,7 +391,11 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryTile label="Present" value={summary.present} tone="text-emerald-600" />
+        <SummaryTile
+          label="Present"
+          value={summary.present}
+          tone="text-emerald-600"
+        />
         <SummaryTile label="Late" value={summary.late} tone="text-amber-600" />
         <SummaryTile label="Excused" value={summary.excused} tone="text-info" />
         <SummaryTile
@@ -254,11 +408,17 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
       <Card className="overflow-hidden p-0">
         <div className="flex flex-col gap-3 border-b border-hairline p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted">
-            {summary.eligible} approved members {roster.isFetching && <Loader size="sm" label="Updating…" className="ml-2 text-brand" />}
+            {summary.eligible} approved members{" "}
+            {roster.isFetching && (
+              <Loader size="sm" label="Updating…" className="ml-2 text-brand" />
+            )}
           </p>
           <label className="relative block sm:w-64">
             <span className="sr-only">Search roster</span>
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
+            <Search
+              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted"
+              aria-hidden
+            />
             <input
               type="search"
               value={q}
@@ -269,11 +429,19 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
           </label>
         </div>
         {entries.length === 0 ? (
-          <EmptyState icon={<Search className="size-6" />} title={q ? "No matches" : "No approved members"} body={q ? undefined : "Approve members from the Members page."} />
+          <EmptyState
+            icon={<Search className="size-6" />}
+            title={q ? "No matches" : "No approved members"}
+            body={q ? undefined : "Approve members from the Members page."}
+          />
         ) : (
           <ul className="divide-y divide-hairline">
             {entries.map((e) => (
-              <motion.li key={e.userId} layout="position" className="flex items-center gap-4 px-4 py-3">
+              <motion.li
+                key={e.userId}
+                layout="position"
+                className="flex items-center gap-4 px-4 py-3"
+              >
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-xs font-semibold text-brand-deep">
                   {initials(e.fullName)}
                 </span>
@@ -287,7 +455,10 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
                         {e.attendance.method === "qr" ? (
                           <Smartphone className="size-3" aria-label="QR" />
                         ) : e.attendance.method === "location" ? (
-                          <Navigation className="size-3" aria-label="Location" />
+                          <Navigation
+                            className="size-3"
+                            aria-label="Location"
+                          />
                         ) : (
                           <PencilLine className="size-3" aria-label="Manual" />
                         )}
@@ -299,7 +470,9 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
                 {e.attendance ? (
                   <AttendanceBadge status={e.attendance.status} />
                 ) : (
-                  <span className="text-xs text-muted">{s.status === "active" ? "Not yet" : "Absent"}</span>
+                  <span className="text-xs text-muted">
+                    {s.status === "active" ? "Not yet" : "Absent"}
+                  </span>
                 )}
                 <div className="flex shrink-0 gap-1">
                   {e.attendance ? (
@@ -313,7 +486,11 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
                     </button>
                   ) : null}
                   {editable && e.userId !== myId ? (
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(e)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditing(e)}
+                    >
                       {e.attendance ? "Change" : "Record"}
                     </Button>
                   ) : null}
@@ -324,8 +501,16 @@ function RosterView({ session: s, roster }: { session: CdsSession; roster: Roste
         )}
       </Card>
 
-      <ManualAttendanceDialog sessionId={s.id} entry={editing} onClose={() => setEditing(null)} />
-      <HistoryDialog attendanceId={history?.attendance?.id ?? null} name={history?.fullName ?? ""} onClose={() => setHistory(null)} />
+      <ManualAttendanceDialog
+        sessionId={s.id}
+        entry={editing}
+        onClose={() => setEditing(null)}
+      />
+      <HistoryDialog
+        attendanceId={history?.attendance?.id ?? null}
+        name={history?.fullName ?? ""}
+        onClose={() => setHistory(null)}
+      />
     </div>
   );
 }
@@ -344,9 +529,16 @@ function MemberView({ session: s }: { session: CdsSession }) {
         </>
       ) : s.status === "active" ? (
         <>
-          <h2 className="text-xl font-semibold tracking-tight">Check-in is open</h2>
-          <p className="mt-2 text-sm text-muted">Scan the code on your executive&apos;s screen.</p>
-          <Link href="/attendance" className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-brand px-6 font-medium text-white shadow-lift hover:bg-brand-deep">
+          <h2 className="text-xl font-semibold tracking-tight">
+            Check-in is open
+          </h2>
+          <p className="mt-2 text-sm text-muted">
+            Scan the code on your executive&apos;s screen.
+          </p>
+          <Link
+            href="/attendance"
+            className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-brand px-6 font-medium text-white shadow-lift hover:bg-brand-deep"
+          >
             <QrCode className="size-5" aria-hidden /> Scan to check in
           </Link>
         </>

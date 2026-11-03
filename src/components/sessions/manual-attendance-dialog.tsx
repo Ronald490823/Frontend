@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { TextAreaField } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
 import { useRecordAttendance } from "@/features/attendance/hooks";
+import { applyServerErrors } from "@/hooks/use-form-errors";
 import { manualAttendanceSchema, type ManualAttendanceValues } from "@/lib/validators";
 import type { RosterEntry } from "@/types/api";
 import { ATTENDANCE_LABEL } from "./status";
@@ -28,7 +29,13 @@ export function ManualAttendanceDialog({ sessionId, entry, onClose }: { sessionI
 
   const onSubmit = form.handleSubmit(async (v) => {
     if (!entry) return;
-    await record.mutateAsync({ userId: entry.userId, ...v });
+    try {
+      await record.mutateAsync({ userId: entry.userId, ...v });
+    } catch (error) {
+      // Keep the dialog open with what was typed. Other errors are toasted globally.
+      applyServerErrors(error, form.setError, ["status", "reason"]);
+      return;
+    }
     toast.success(`${entry.fullName} marked ${ATTENDANCE_LABEL[v.status].toLowerCase()}`);
     onClose();
   });

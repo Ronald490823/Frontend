@@ -4,9 +4,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ArrowUpRight, Building2, IdCard, Radio, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 import { useActiveSessions } from "@/features/sessions/hooks";
+import { formatMonth, MonthlyBoxes, MonthlyLegend } from "@/components/attendance/monthly-boxes";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { Badge, Card, Skeleton } from "@/components/ui/card";
+import { useMyMonthlyAttendance } from "@/features/attendance/hooks";
 import { useMe } from "@/features/auth/hooks";
 import { useManagedGroups } from "@/features/groups/hooks";
 import { usePendingCount } from "@/features/memberships/hooks";
@@ -105,7 +107,32 @@ function ProfileCard({ me }: { me: Me }) {
       <p className="mt-5 text-2xl font-semibold tracking-tight">{me.stateCode}</p>
       <p className="mt-1 truncate text-sm text-muted">{me.email}</p>
       <p className="mt-5 text-xs text-muted">Member since {formatDate(me.createdAt)}</p>
+      {me.membership?.status === "approved" && <MonthlyAttendance />}
     </Card>
+  );
+}
+
+function MonthlyAttendance() {
+  const monthly = useMyMonthlyAttendance();
+  return (
+    <section aria-label="Attendance this month" className="mt-5 border-t border-hairline pt-5">
+      {monthly.isPending ? (
+        <Skeleton className="h-20" />
+      ) : monthly.isError ? (
+        <p className="text-sm text-muted">Couldn&apos;t load this month&apos;s attendance.</p>
+      ) : (
+        <>
+          <p className="text-sm font-medium">{formatMonth(monthly.data.month)}</p>
+          <MonthlyBoxes
+            required={monthly.data.required}
+            sessions={monthly.data.sessions}
+            marks={monthly.data.marks}
+            className="mt-3"
+          />
+          <MonthlyLegend className="mt-3" />
+        </>
+      )}
+    </section>
   );
 }
 

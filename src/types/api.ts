@@ -166,6 +166,28 @@ export interface MyAttendanceItem {
   checkedInAt: string;
 }
 
+export type MonthlyMark = "attended" | "absent" | "excused" | "pending" | "exempt";
+
+export interface MonthlySession {
+  sessionId: string;
+  title: string;
+  scheduledStart: string;
+}
+
+export interface MyMonthlyAttendance {
+  month: string; // YYYY-MM
+  required: number;
+  sessions: MonthlySession[];
+  marks: MonthlyMark[];
+}
+
+export interface GroupMonthlyAttendance {
+  month: string; // YYYY-MM
+  required: number;
+  sessions: MonthlySession[];
+  members: { userId: string; marks: MonthlyMark[] }[];
+}
+
 export interface RosterEntry {
   userId: string;
   fullName: string;

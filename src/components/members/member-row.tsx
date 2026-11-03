@@ -14,9 +14,11 @@ interface Props {
   canChangeRoles: boolean;
   isSelf: boolean;
   onReject: (m: Membership) => void;
+  /** This month's attendance boxes, rendered as given. Omitted outside the approved list. */
+  monthly?: React.ReactNode;
 }
 
-export function MemberRow({ membership: m, canChangeRoles, isSelf, onReject }: Props) {
+export function MemberRow({ membership: m, canChangeRoles, isSelf, onReject, monthly }: Props) {
   const approve = useApproveMembership();
   const changeRole = useChangeRole();
 
@@ -55,6 +57,7 @@ export function MemberRow({ membership: m, canChangeRoles, isSelf, onReject }: P
           </p>
         </div>
       </div>
+      {monthly}
       <p className="text-xs text-muted sm:w-28 sm:text-right">{formatRelative(m.decidedAt ?? m.createdAt)}</p>
 
       {m.status === "pending" && (

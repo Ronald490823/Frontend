@@ -2,7 +2,8 @@
 
 import { AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Search, UserRoundCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { formatMonth, MonthlyBoxes, MonthlyLegend } from "@/components/attendance/monthly-boxes";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
 import { MemberRow } from "@/components/members/member-row";
 import { RejectDialog } from "@/components/members/reject-dialog";
@@ -12,6 +13,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { SelectField } from "@/components/ui/field";
 import { Loader } from "@/components/ui/loader";
 import { Segmented } from "@/components/ui/segmented";
+import { useGroupMonthlyAttendance } from "@/features/attendance/hooks";
 import { useMe } from "@/features/auth/hooks";
 import { useManagedGroups } from "@/features/groups/hooks";
 import { useGroupMemberships } from "@/features/memberships/hooks";
@@ -53,6 +55,12 @@ export default function MembersPage() {
   useEffect(() => setPage(1), [groupId, status, q]);
 
   const list = useGroupMemberships(groupId ? { groupId, status, q, page } : null);
+  const showMonthly = status === "approved" && canManageMembers(me);
+  const monthly = useGroupMonthlyAttendance(showMonthly && groupId ? groupId : null);
+  const marksByUser = useMemo(
+    () => new Map(monthly.data?.members.map((member) => [member.userId, member.marks])),
+    [monthly.data],
+  );
 
   if (!canManageMembers(me)) {
     return (
@@ -134,6 +142,15 @@ export default function MembersPage() {
               </span>
               {list.isFetching && <Loader size="sm" label="Updating…" />}
             </div>
+            {showMonthly && monthly.data && (
+              <div className="flex flex-col gap-2 border-b border-hairline px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-medium">{formatMonth(monthly.data.month)} attendance</p>
+                <MonthlyLegend />
+              </div>
+            )}
+            {showMonthly && monthly.isError && (
+              <p className="border-b border-hairline px-5 py-3 text-sm text-muted">Couldn&apos;t load this month&apos;s attendance.</p>
+            )}
             <ul className="divide-y divide-hairline">
               <AnimatePresence initial={false} mode="popLayout">
                 {list.data.items.map((m) => (
@@ -143,6 +160,16 @@ export default function MembersPage() {
                     canChangeRoles={areaAdmin}
                     isSelf={m.userId === me?.id}
                     onReject={setRejecting}
+                    monthly={
+                      showMonthly && monthly.data ? (
+                        <MonthlyBoxes
+                          size="sm"
+                          required={monthly.data.required}
+                          sessions={monthly.data.sessions}
+                          marks={marksByUser.get(m.userId) ?? []}
+                        />
+                      ) : undefined
+                    }
                   />
                 ))}
               </AnimatePresence>

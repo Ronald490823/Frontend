@@ -22,17 +22,24 @@ export function Dialog({ open, onClose, title, description, children, locked }: 
   const titleId = useId();
   const descId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  // Callers usually pass an inline onClose, which changes on every parent render. Read the
+  // latest values through refs so a re-render can't re-run the effect below: it moves focus,
+  // and a polling parent would otherwise pull the user out of whatever field they're typing in.
+  const latest = useRef({ onClose, locked });
+  useEffect(() => {
+    latest.current = { onClose, locked };
+  });
 
   useEffect(() => {
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
-    requestAnimationFrame(() => (panel?.querySelector<HTMLElement>(FOCUSABLE) ?? panel)?.focus());
+    const frame = requestAnimationFrame(() => (panel?.querySelector<HTMLElement>(FOCUSABLE) ?? panel)?.focus());
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !locked) onClose();
+      if (e.key === "Escape" && !latest.current.locked) latest.current.onClose();
       if (e.key === "Tab" && panel) {
         const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
         if (!nodes.length) return;
@@ -49,11 +56,12 @@ export function Dialog({ open, onClose, title, description, children, locked }: 
     }
     document.addEventListener("keydown", onKey);
     return () => {
+      cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
       previouslyFocused?.focus();
     };
-  }, [open, locked, onClose]);
+  }, [open]);
 
   if (typeof document === "undefined") return null;
 

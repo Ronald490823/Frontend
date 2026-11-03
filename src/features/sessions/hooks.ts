@@ -82,6 +82,8 @@ export function useSessionAction(id: string) {
       qc.setQueryData(["session", id], session);
       void qc.invalidateQueries({ queryKey: ["sessions"] });
       void qc.invalidateQueries({ queryKey: ["roster", id] });
+      // Closing a session turns members with no record into absences on the monthly boxes.
+      void qc.invalidateQueries({ queryKey: ["attendance"] });
     },
   });
 }

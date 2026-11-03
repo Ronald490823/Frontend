@@ -2,7 +2,16 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import type { AttendanceRecord, AttendanceStatus, CheckInResult, Correction, MyAttendanceItem, Page } from "@/types/api";
+import type {
+  AttendanceRecord,
+  AttendanceStatus,
+  CheckInResult,
+  Correction,
+  GroupMonthlyAttendance,
+  MyAttendanceItem,
+  MyMonthlyAttendance,
+  Page,
+} from "@/types/api";
 
 export interface CheckInInput {
   payload: string;
@@ -52,12 +61,33 @@ export function useMyAttendance(page: number) {
   });
 }
 
+/** The caller's four boxes for the current month. Lives under ["attendance", "me"] so check-ins refresh it. */
+export function useMyMonthlyAttendance(enabled = true) {
+  return useQuery({
+    queryKey: ["attendance", "me", "monthly"],
+    enabled,
+    queryFn: async () => (await api.get<MyMonthlyAttendance>("/attendance/me/monthly")).data,
+  });
+}
+
+/** Every member's boxes for the current month. The API limits this to people who manage the group. */
+export function useGroupMonthlyAttendance(groupId: string | null) {
+  return useQuery({
+    queryKey: ["attendance", "monthly", groupId],
+    enabled: !!groupId,
+    queryFn: async () => (await api.get<GroupMonthlyAttendance>(`/groups/${groupId}/attendance/monthly`)).data,
+  });
+}
+
 export function useRecordAttendance(sessionId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { userId: string; status: AttendanceStatus; reason: string }) =>
       (await api.post<AttendanceRecord>(`/sessions/${sessionId}/attendance/manual`, input)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["roster", sessionId] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["attendance"] });
+      return qc.invalidateQueries({ queryKey: ["roster", sessionId] });
+    },
   });
 }
 
