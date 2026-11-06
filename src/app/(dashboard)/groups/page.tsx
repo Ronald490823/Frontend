@@ -39,7 +39,7 @@ export default function GroupsPage() {
       <PageHeader
         eyebrow="Administration"
         title="CDS groups"
-        description="Groups in your local government area. Corps members choose one when they register."
+        description="Groups in your local government area. Corp members choose one when they register."
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus className="size-4" aria-hidden /> New group
@@ -131,7 +131,7 @@ function CreateGroupDialog({ open, onClose }: { open: boolean; onClose: () => vo
   });
 
   return (
-    <Dialog open={open} onClose={close} locked={create.isPending} title="New CDS group" description="Corps members will be able to register into this group straight away.">
+    <Dialog open={open} onClose={close} locked={create.isPending} title="New CDS group" description="Corp members will be able to register into this group straight away.">
       <form onSubmit={onSubmit} noValidate className="space-y-5">
         <SelectField label="Local government area" error={errors.areaId?.message} disabled={areas.isPending} {...form.register("areaId")}>
           <option value="">{areas.isPending ? "Loading areas…" : "Choose an area"}</option>

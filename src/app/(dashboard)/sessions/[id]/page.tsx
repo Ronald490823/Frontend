@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Clock,
+  Download,
   History,
   MapPin,
   Navigation,
@@ -23,12 +24,15 @@ import { EditSessionDialog } from "@/components/sessions/edit-session-dialog";
 import { HistoryDialog } from "@/components/sessions/history-dialog";
 import { ManualAttendanceDialog } from "@/components/sessions/manual-attendance-dialog";
 import { QrPanel } from "@/components/sessions/qr-panel";
+import { SelfCheckIn } from "@/components/sessions/self-check-in";
 import { AttendanceBadge, SessionBadge } from "@/components/sessions/status";
 import { Button } from "@/components/ui/button";
-import { Card, EmptyState, Skeleton } from "@/components/ui/card";
+import { Badge, Card, EmptyState, Skeleton } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorState } from "@/components/ui/error-state";
 import { FullPageLoader, Loader } from "@/components/ui/loader";
+import { Segmented } from "@/components/ui/segmented";
+import { CheckInPanel } from "@/components/attendance/check-in-panel";
 import { useMe } from "@/features/auth/hooks";
 import {
   type SessionAction,
@@ -210,6 +214,14 @@ function SessionControls({ session: s }: { session: CdsSession }) {
         : s.status === "closed"
           ? ["archive"]
           : [];
+  console.log(
+    "SessionControls available",
+    available,
+    "pending",
+    pending,
+    "act.isPending",
+    act.isPending,
+  );
   if (!available.length) return null;
 
   async function run(action: SessionAction) {
@@ -222,6 +234,7 @@ function SessionControls({ session: s }: { session: CdsSession }) {
 
   return (
     <div className="flex gap-2">
+      {/* {console.log("SessionControls available", available, "pending", pending, "act.isPending", act.isPending)} */}
       {available.map((a) => (
         <Button
           key={a}
@@ -259,6 +272,8 @@ function ManagerView({
   session: CdsSession;
   roster: RosterQuery;
 }) {
+  const me = useMe().data;
+  const myId = me?.id;
   if (s.status === "scheduled") {
     return (
       <Card>
@@ -282,6 +297,8 @@ function ManagerView({
     );
   }
   const summary = roster.data?.summary;
+  // Only members of this group can attend it (an LGI overseeing it can't check in).
+  const isMember = me?.membership?.status === "approved" && me.membership.groupId === s.groupId;
   const checkedIn = summary ? summary.present + summary.late : 0;
   return (
     <div
@@ -291,13 +308,24 @@ function ManagerView({
       )}
     >
       {s.status === "active" && (
-        <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="space-y-4 lg:sticky lg:top-8 lg:self-start">
           <QrPanel
             sessionId={s.id}
             title={s.title}
             checkedIn={checkedIn}
             eligible={summary?.eligible ?? 0}
           />
+          {myId && isMember && (
+            <SelfCheckIn
+              sessionId={s.id}
+              requiresLocation={s.requiresLocation}
+              myRecord={
+                roster.data
+                  ? (roster.data.entries.find((e) => e.userId === myId)?.attendance ?? null)
+                  : undefined
+              }
+            />
+          )}
         </div>
       )}
       <RosterView session={s} roster={roster} />
@@ -329,6 +357,47 @@ function SummaryTile({
   );
 }
 
+type RosterFilter = "in" | "all" | "present" | "late" | "excused" | "absent" | "none";
+
+/** Showed up: scanned, checked in by location, or recorded present/late by an executive. */
+const checkedIn = (e: RosterEntry) => e.attendance?.status === "present" || e.attendance?.status === "late";
+
+/** What a row counts as for filtering: a closed session turns "no record" into an absence. */
+function rowState(e: RosterEntry, live: boolean): Exclude<RosterFilter, "all" | "in"> {
+  if (e.attendance) return e.attendance.status;
+  return live ? "none" : "absent";
+}
+
+const METHOD_LABEL = { qr: "QR scan", location: "Location", manual: "Recorded" } as const;
+
+function csvCell(v: string) {
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+function downloadCsv(s: CdsSession, rows: { n: number | null; e: RosterEntry }[], live: boolean) {
+  const header = ["#", "Name", "State code", "Role", "Status", "Checked in", "Method"];
+  const lines = rows.map(({ n, e }) =>
+    [
+      n === null ? "" : String(n),
+      e.fullName,
+      e.stateCode,
+      e.role,
+      e.attendance ? e.attendance.status : live ? "not yet" : "absent",
+      e.attendance ? formatTime(e.attendance.checkedInAt) : "",
+      e.attendance ? METHOD_LABEL[e.attendance.method] : "",
+    ]
+      .map(csvCell)
+      .join(","),
+  );
+  const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${s.title.replace(/[^\w-]+/g, "_")}_${s.scheduledStart.slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function RosterView({
   session: s,
   roster,
@@ -337,29 +406,49 @@ function RosterView({
   roster: RosterQuery;
 }) {
   const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<RosterFilter>("in");
   const [editing, setEditing] = useState<RosterEntry | null>(null);
   const [history, setHistory] = useState<RosterEntry | null>(null);
+  const live = s.status === "active";
   const editable = s.status === "active" || s.status === "closed";
   // The API refuses self-edits; hide the control rather than invite a 403.
   const myId = useMe().data?.id;
 
-  const entries = useMemo(() => {
+  // Everyone who checked in gets a number in the order they came in (1 = first in). Numbers
+  // stay fixed while searching or filtering. Excused, absent and not-yet members follow, unnumbered.
+  const numbered = useMemo(() => {
     const list = roster.data?.entries ?? [];
+    const inOrder = list
+      .filter(checkedIn)
+      .sort((a, b) => a.attendance!.checkedInAt.localeCompare(b.attendance!.checkedInAt));
+    const rest = list
+      .filter((e) => !checkedIn(e))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+    return [
+      ...inOrder.map((e, i) => ({ n: i + 1 as number | null, e })),
+      ...rest.map((e) => ({ n: null as number | null, e })),
+    ];
+  }, [roster.data]);
+
+  const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const filtered = needle
-      ? list.filter(
-          (e) =>
-            e.fullName.toLowerCase().includes(needle) ||
-            e.stateCode.toLowerCase().includes(needle),
-        )
-      : list;
-    // Most recent check-ins first, then everyone not yet recorded.
-    return [...filtered].sort((a, b) =>
-      (b.attendance?.checkedInAt ?? "").localeCompare(
-        a.attendance?.checkedInAt ?? "",
-      ),
+    return numbered.filter(
+      ({ e }) =>
+        (filter === "all" || (filter === "in" ? checkedIn(e) : rowState(e, live) === filter)) &&
+        (!needle ||
+          e.fullName.toLowerCase().includes(needle) ||
+          e.stateCode.toLowerCase().includes(needle)),
     );
-  }, [roster.data, q]);
+  }, [numbered, q, filter, live]);
+
+  const counts = useMemo(() => {
+    const c: Record<RosterFilter, number> = { in: 0, all: numbered.length, present: 0, late: 0, excused: 0, absent: 0, none: 0 };
+    for (const { e } of numbered) {
+      c[rowState(e, live)] += 1;
+      if (checkedIn(e)) c.in += 1;
+    }
+    return c;
+  }, [numbered, live]);
 
   if (roster.isPending) {
     return (
@@ -388,6 +477,19 @@ function RosterView({
   }
 
   const { summary } = roster.data as Roster;
+  const attended = summary.present + summary.late;
+  const rate = summary.eligible ? Math.round((attended / summary.eligible) * 100) : 0;
+  const filterOptions: { value: RosterFilter; label: string; count: number }[] = [
+    { value: "in", label: "Checked in", count: counts.in },
+    { value: "all", label: "Everyone", count: counts.all },
+    { value: "present", label: "Present", count: counts.present },
+    { value: "late", label: "Late", count: counts.late },
+    { value: "excused", label: "Excused", count: counts.excused },
+    live
+      ? { value: "none", label: "Not yet", count: counts.none }
+      : { value: "absent", label: "Absent", count: counts.absent },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -399,105 +501,178 @@ function RosterView({
         <SummaryTile label="Late" value={summary.late} tone="text-amber-600" />
         <SummaryTile label="Excused" value={summary.excused} tone="text-info" />
         <SummaryTile
-          label={s.status === "active" ? "Not yet in" : "Absent"}
-          value={s.status === "active" ? summary.notRecorded : summary.absent}
+          label={live ? "Not yet in" : "Absent"}
+          value={live ? summary.notRecorded : summary.absent}
           tone="text-ink"
         />
       </div>
 
-      <Card className="overflow-hidden p-0">
-        <div className="flex flex-col gap-3 border-b border-hairline p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted">
-            {summary.eligible} approved members{" "}
-            {roster.isFetching && (
-              <Loader size="sm" label="Updating…" className="ml-2 text-brand" />
-            )}
-          </p>
-          <label className="relative block sm:w-64">
-            <span className="sr-only">Search roster</span>
-            <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search"
-              className="h-10 w-full rounded-full bg-canvas pl-10 pr-4 text-sm ring-1 ring-hairline focus:outline-none focus:ring-2 focus:ring-brand/70"
-            />
-          </label>
+      <div className="rounded-2xl bg-white p-4 shadow-soft ring-1 ring-hairline">
+        <div className="flex items-baseline justify-between text-sm">
+          <span className="font-medium">Turnout</span>
+          <span className="tabular-nums text-muted">
+            {attended} of {summary.eligible} · <span className="font-semibold text-ink">{rate}%</span>
+          </span>
         </div>
-        {entries.length === 0 ? (
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink/[0.06]" aria-hidden>
+          <motion.div
+            className="h-full rounded-full bg-brand"
+            initial={{ width: 0 }}
+            animate={{ width: `${rate}%` }}
+            transition={{ type: "spring", stiffness: 120, damping: 24 }}
+          />
+        </div>
+      </div>
+
+      <Card className="overflow-hidden p-0">
+        <div className="space-y-3 border-b border-hairline p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-center text-sm text-muted">
+              {live ? "Attendance list · live" : "Attendance list"}
+              {roster.isFetching && (
+                <Loader size="sm" label="Updating…" className="ml-2 text-brand" />
+              )}
+            </p>
+            <div className="flex gap-2">
+              <label className="relative block flex-1 sm:w-64 sm:flex-none">
+                <span className="sr-only">Search roster</span>
+                <Search
+                  className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search name or state code"
+                  className="h-10 w-full rounded-full bg-canvas pl-10 pr-4 text-sm ring-1 ring-hairline focus:outline-none focus:ring-2 focus:ring-brand/70"
+                />
+              </label>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-10"
+                onClick={() => downloadCsv(s, rows, live)}
+                disabled={rows.length === 0}
+                aria-label="Download attendance list as CSV"
+              >
+                <Download className="size-4" aria-hidden />
+                <span className="hidden sm:inline">CSV</span>
+              </Button>
+            </div>
+          </div>
+          <div className="-mx-1 overflow-x-auto px-1 pb-0.5">
+            <Segmented label="Filter by status" value={filter} onChange={setFilter} options={filterOptions} />
+          </div>
+        </div>
+        {rows.length === 0 ? (
           <EmptyState
             icon={<Search className="size-6" />}
-            title={q ? "No matches" : "No approved members"}
-            body={q ? undefined : "Approve members from the Members page."}
+            title={
+              q
+                ? "No matches"
+                : filter === "in"
+                  ? live
+                    ? "No one has checked in yet"
+                    : "No one checked in"
+                  : filter !== "all"
+                    ? "No matches"
+                    : "No approved members"
+            }
+            body={
+              q
+                ? "Try a different search."
+                : filter === "in"
+                  ? live
+                    ? "Each person who scans gets the next number on this list."
+                    : undefined
+                  : filter !== "all"
+                    ? "Try a different filter."
+                    : "Approve members from the Members page."
+            }
           />
         ) : (
-          <ul className="divide-y divide-hairline">
-            {entries.map((e) => (
-              <motion.li
-                key={e.userId}
-                layout="position"
-                className="flex items-center gap-4 px-4 py-3"
-              >
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-xs font-semibold text-brand-deep">
-                  {initials(e.fullName)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{e.fullName}</p>
-                  <p className="flex items-center gap-1.5 truncate text-xs text-muted">
-                    {e.stateCode}
-                    {e.attendance && (
-                      <>
-                        <span aria-hidden>·</span>
-                        {e.attendance.method === "qr" ? (
-                          <Smartphone className="size-3" aria-label="QR" />
-                        ) : e.attendance.method === "location" ? (
-                          <Navigation
-                            className="size-3"
-                            aria-label="Location"
-                          />
-                        ) : (
-                          <PencilLine className="size-3" aria-label="Manual" />
-                        )}
-                        {formatTime(e.attendance.checkedInAt)}
-                      </>
-                    )}
-                  </p>
-                </div>
-                {e.attendance ? (
-                  <AttendanceBadge status={e.attendance.status} />
-                ) : (
-                  <span className="text-xs text-muted">
-                    {s.status === "active" ? "Not yet" : "Absent"}
+          <ol className="divide-y divide-hairline">
+            {rows.map(({ n, e }) => {
+              const isMe = e.userId === myId;
+              return (
+                <motion.li
+                  key={e.userId}
+                  layout="position"
+                  className={cn("flex items-center gap-3 px-4 py-3 sm:gap-4", isMe && "bg-surface/60")}
+                >
+                  {n !== null ? (
+                    <span
+                      className="grid h-7 min-w-7 shrink-0 place-items-center rounded-full bg-brand px-1.5 text-xs font-semibold tabular-nums text-white"
+                      aria-label={`Number ${n}`}
+                    >
+                      {n}
+                    </span>
+                  ) : (
+                    <span className="grid h-7 min-w-7 shrink-0 place-items-center text-xs text-muted" aria-hidden>
+                      –
+                    </span>
+                  )}
+                  <span className="hidden size-10 shrink-0 place-items-center rounded-full bg-surface text-xs font-semibold text-brand-deep sm:grid">
+                    {initials(e.fullName)}
                   </span>
-                )}
-                <div className="flex shrink-0 gap-1">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                      <span className="truncate">{e.fullName}</span>
+                      {isMe && <Badge tone="info">You</Badge>}
+                      {e.role === "executive" && !isMe && (
+                        <span className="text-xs font-normal text-muted">Exco</span>
+                      )}
+                    </p>
+                    <p className="flex items-center gap-1.5 truncate text-xs text-muted">
+                      {e.stateCode}
+                      {e.attendance && (
+                        <>
+                          <span aria-hidden>·</span>
+                          {e.attendance.method === "qr" ? (
+                            <Smartphone className="size-3" aria-label="QR" />
+                          ) : e.attendance.method === "location" ? (
+                            <Navigation className="size-3" aria-label="Location" />
+                          ) : (
+                            <PencilLine className="size-3" aria-label="Manual" />
+                          )}
+                          {formatTime(e.attendance.checkedInAt)}
+                        </>
+                      )}
+                    </p>
+                  </div>
                   {e.attendance ? (
-                    <button
-                      type="button"
-                      onClick={() => setHistory(e)}
-                      aria-label={`History for ${e.fullName}`}
-                      className="grid size-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5 hover:text-ink"
-                    >
-                      <History className="size-4" aria-hidden />
-                    </button>
-                  ) : null}
-                  {editable && e.userId !== myId ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditing(e)}
-                    >
-                      {e.attendance ? "Change" : "Record"}
-                    </Button>
-                  ) : null}
-                </div>
-              </motion.li>
-            ))}
-          </ul>
+                    <AttendanceBadge status={e.attendance.status} />
+                  ) : (
+                    <span className="text-xs text-muted">{live ? "Not yet" : "Absent"}</span>
+                  )}
+                  <div className="flex shrink-0 gap-1">
+                    {e.attendance ? (
+                      <button
+                        type="button"
+                        onClick={() => setHistory(e)}
+                        aria-label={`History for ${e.fullName}`}
+                        className="grid size-8 place-items-center rounded-full text-ink/50 hover:bg-ink/5 hover:text-ink"
+                      >
+                        <History className="size-4" aria-hidden />
+                      </button>
+                    ) : null}
+                    {editable && !isMe ? (
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(e)}>
+                        {e.attendance ? "Change" : "Record"}
+                      </Button>
+                    ) : null}
+                  </div>
+                </motion.li>
+              );
+            })}
+          </ol>
+        )}
+        {rows.length > 0 && (
+          <p className="border-t border-hairline px-4 py-3 text-xs text-muted">
+            {counts.in} checked in · showing {rows.length} of {numbered.length}. Each person who checks in gets the next number.
+            {!live && " Need your own record changed? Ask another executive or your LGI."}
+          </p>
         )}
       </Card>
 
@@ -516,6 +691,16 @@ function RosterView({
 }
 
 function MemberView({ session: s }: { session: CdsSession }) {
+  if (!s.myStatus && s.status === "active") {
+    return (
+      <div className="mx-auto max-w-lg">
+        <CheckInPanel />
+        <p className="mt-4 px-2 text-center text-xs text-muted">
+          Trouble checking in? Your executive can record your attendance manually.
+        </p>
+      </div>
+    );
+  }
   return (
     <Card className="mx-auto max-w-lg py-10 text-center">
       {s.myStatus ? (
@@ -526,27 +711,23 @@ function MemberView({ session: s }: { session: CdsSession }) {
               <AttendanceBadge status={s.myStatus} />
             </span>
           </div>
-        </>
-      ) : s.status === "active" ? (
-        <>
-          <h2 className="text-xl font-semibold tracking-tight">
-            Check-in is open
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            Scan the code on your executive&apos;s screen.
-          </p>
-          <Link
-            href="/attendance"
-            className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-brand px-6 font-medium text-white shadow-lift hover:bg-brand-deep"
-          >
-            <QrCode className="size-5" aria-hidden /> Scan to check in
+          <Link href="/attendance" className="mt-6 inline-block text-sm font-medium text-brand hover:text-brand-deep">
+            See your attendance history
           </Link>
+        </>
+      ) : s.status === "scheduled" ? (
+        <>
+          <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-surface text-brand">
+            <Clock className="size-6" aria-hidden />
+          </div>
+          <h2 className="text-lg font-semibold tracking-tight">Check-in opens at {formatTime(s.scheduledStart)}</h2>
+          <p className="mt-1 text-sm text-muted">
+            That&apos;s {formatRelative(s.scheduledStart)}. Keep this page open — the check-in button appears here when it starts.
+          </p>
         </>
       ) : (
         <p className="text-muted">
-          {s.status === "scheduled"
-            ? `Check-in opens automatically at ${formatTime(s.scheduledStart)} (${formatRelative(s.scheduledStart)}).`
-            : "No attendance was recorded for you."}
+          {s.status === "cancelled" ? "This session was cancelled." : "No attendance was recorded for you."}
         </p>
       )}
     </Card>

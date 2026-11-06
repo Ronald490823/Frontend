@@ -24,10 +24,12 @@ interface Props {
 /** Start at the next 5-minute mark on this device's clock; end two hours later (same day). */
 function defaultTimes() {
   const start = new Date(Math.ceil(Date.now() / 300_000) * 300_000);
+  console.log("defaultTimes start", start.toISOString());
   const endOfDay = new Date(start);
-  endOfDay.setHours(23, 55, 0, 0);
+  endOfDay.setHours(12, 55, 0, 0);
   const end = new Date(Math.min(start.getTime() + 2 * 3_600_000, endOfDay.getTime()));
   const s = toLocalInputs(start);
+  console.log("defaultTimes end", end.toISOString(), toLocalInputs(end), s);
   return { date: s.date, startTime: s.time, endTime: toLocalInputs(end).time };
 }
 

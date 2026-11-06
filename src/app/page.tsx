@@ -7,7 +7,7 @@ import { Brand } from "@/components/layout/brand";
 
 const ROLES = [
   {
-    title: "Corps members",
+    title: "Corp members",
     points: ["Register with your state code", "Check in by scanning the venue QR", "Submit excuses with evidence", "See your full attendance history"],
   },
   {
