@@ -1,7 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Plus } from "lucide-react";
+import { Building2, ChevronRight, Plus } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -88,19 +89,27 @@ function GroupCard({ group }: { group: Group }) {
     toast.success(group.isActive ? `${group.name} closed to new registrations` : `${group.name} reopened`);
   }
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="relative flex h-full flex-col transition-shadow hover:shadow-lift">
       <div className="flex items-start justify-between gap-3">
         <span className="grid size-11 place-items-center rounded-2xl bg-surface text-brand">
           <Building2 className="size-5" aria-hidden />
         </span>
         <Badge tone={group.isActive ? "success" : "neutral"}>{group.isActive ? "Active" : "Inactive"}</Badge>
       </div>
-      <h2 className="mt-5 text-lg font-semibold tracking-tight">{group.name}</h2>
+      <h2 className="mt-5 text-lg font-semibold tracking-tight">
+        {/* The stretched link makes the whole card open the group; the toggle sits above it. */}
+        <Link href={`/groups/${group.id}`} className="after:absolute after:inset-0 after:rounded-3xl hover:text-brand-deep">
+          {group.name}
+        </Link>
+      </h2>
       <p className="text-sm text-muted">{group.code}</p>
       {group.description && <p className="mt-3 line-clamp-2 text-sm text-ink/70">{group.description}</p>}
       <div className="mt-auto flex items-center justify-between pt-6">
-        <p className="text-xs text-muted">Created {formatDate(group.createdAt)}</p>
-        <Button size="sm" variant="ghost" onClick={onToggle} loading={toggle.isPending} loadingLabel="Saving…">
+        <p className="flex items-center gap-1 text-xs text-muted">
+          Created {formatDate(group.createdAt)}
+          <ChevronRight className="size-3.5 text-ink/30" aria-hidden />
+        </p>
+        <Button size="sm" variant="ghost" className="relative z-10" onClick={onToggle} loading={toggle.isPending} loadingLabel="Saving…">
           {group.isActive ? "Deactivate" : "Activate"}
         </Button>
       </div>

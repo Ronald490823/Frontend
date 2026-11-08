@@ -13,8 +13,11 @@ import {
   Search,
   ShieldCheck,
   Smartphone,
+  Trash2,
+  UserRound,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageContainer } from "@/components/layout/page-header";
@@ -36,6 +39,7 @@ import { CheckInPanel } from "@/components/attendance/check-in-panel";
 import { useMe } from "@/features/auth/hooks";
 import {
   type SessionAction,
+  useDeleteSession,
   useRoster,
   useSession,
   useSessionAction,
@@ -46,6 +50,7 @@ import {
   formatTime,
   initials,
 } from "@/lib/formatters";
+import { downloadAttendancePdf } from "@/lib/attendance-pdf";
 import { cn } from "@/lib/utils";
 import type { CdsSession, Roster, RosterEntry } from "@/types/api";
 
@@ -173,6 +178,7 @@ function SessionDetail({ session: s }: { session: CdsSession }) {
               </span>
             )}
           </div>
+          <SessionPeople session={s} />
         </div>
         {s.canManage && (
           <div className="flex flex-wrap gap-2">
@@ -182,6 +188,7 @@ function SessionDetail({ session: s }: { session: CdsSession }) {
               </Button>
             )}
             <SessionControls session={s} />
+            {s.canDelete && <DeleteSessionButton session={s} />}
           </div>
         )}
       </header>
@@ -203,6 +210,66 @@ function SessionDetail({ session: s }: { session: CdsSession }) {
   );
 }
 
+/** Who set it up, who started it and who ended it — kept with the session for the record. */
+function SessionPeople({ session: s }: { session: CdsSession }) {
+  const parts: string[] = [];
+  if (s.createdByName) parts.push(`Created by ${s.createdByName}`);
+  if (s.actualStart) {
+    parts.push(
+      s.startedByName
+        ? `Started by ${s.startedByName} at ${formatTime(s.actualStart)}`
+        : `Started automatically at ${formatTime(s.actualStart)}`,
+    );
+  }
+  if (s.actualEnd) {
+    parts.push(
+      s.closedByName ? `Ended by ${s.closedByName} at ${formatTime(s.actualEnd)}` : `Ended at ${formatTime(s.actualEnd)}`,
+    );
+  }
+  if (!parts.length) return null;
+  return (
+    <p className="mt-2 flex items-start gap-1.5 text-sm text-muted">
+      <UserRound className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>{parts.join(" · ")}</span>
+    </p>
+  );
+}
+
+function DeleteSessionButton({ session: s }: { session: CdsSession }) {
+  const del = useDeleteSession(s.id);
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="secondary" className="text-rose-700" onClick={() => setOpen(true)}>
+        <Trash2 className="size-4" aria-hidden /> Delete
+      </Button>
+      <ConfirmDialog
+        open={open}
+        title="Delete this session?"
+        body={
+          s.status === "active"
+            ? "It's live, so it will be closed first. The session disappears from every list and member's record, but stays in the database."
+            : "It disappears from every list and member's record, but stays in the database."
+        }
+        confirmLabel="Delete session"
+        tone="danger"
+        pending={del.isPending}
+        onConfirm={() =>
+          void del
+            .mutateAsync()
+            .then(() => {
+              toast.success("Session deleted");
+              router.replace("/sessions");
+            })
+            .catch(() => undefined)
+        }
+        onClose={() => setOpen(false)}
+      />
+    </>
+  );
+}
+
 function SessionControls({ session: s }: { session: CdsSession }) {
   const act = useSessionAction(s.id);
   const [pending, setPending] = useState<SessionAction | null>(null);
@@ -214,14 +281,6 @@ function SessionControls({ session: s }: { session: CdsSession }) {
         : s.status === "closed"
           ? ["archive"]
           : [];
-  console.log(
-    "SessionControls available",
-    available,
-    "pending",
-    pending,
-    "act.isPending",
-    act.isPending,
-  );
   if (!available.length) return null;
 
   async function run(action: SessionAction) {
@@ -233,8 +292,7 @@ function SessionControls({ session: s }: { session: CdsSession }) {
   }
 
   return (
-    <div className="flex gap-2">
-      {/* {console.log("SessionControls available", available, "pending", pending, "act.isPending", act.isPending)} */}
+    <div className="flex flex-wrap gap-2">
       {available.map((a) => (
         <Button
           key={a}
@@ -303,7 +361,7 @@ function ManagerView({
   return (
     <div
       className={cn(
-        "grid gap-6",
+        "grid grid-cols-[minmax(0,1fr)] gap-6",
         s.status === "active" && "lg:grid-cols-[22rem_minmax(0,1fr)]",
       )}
     >
@@ -368,36 +426,6 @@ function rowState(e: RosterEntry, live: boolean): Exclude<RosterFilter, "all" | 
   return live ? "none" : "absent";
 }
 
-const METHOD_LABEL = { qr: "QR scan", location: "Location", manual: "Recorded" } as const;
-
-function csvCell(v: string) {
-  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-}
-
-function downloadCsv(s: CdsSession, rows: { n: number | null; e: RosterEntry }[], live: boolean) {
-  const header = ["#", "Name", "State code", "Role", "Status", "Checked in", "Method"];
-  const lines = rows.map(({ n, e }) =>
-    [
-      n === null ? "" : String(n),
-      e.fullName,
-      e.stateCode,
-      e.role,
-      e.attendance ? e.attendance.status : live ? "not yet" : "absent",
-      e.attendance ? formatTime(e.attendance.checkedInAt) : "",
-      e.attendance ? METHOD_LABEL[e.attendance.method] : "",
-    ]
-      .map(csvCell)
-      .join(","),
-  );
-  const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${s.title.replace(/[^\w-]+/g, "_")}_${s.scheduledStart.slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 function RosterView({
   session: s,
   roster,
@@ -409,6 +437,7 @@ function RosterView({
   const [filter, setFilter] = useState<RosterFilter>("in");
   const [editing, setEditing] = useState<RosterEntry | null>(null);
   const [history, setHistory] = useState<RosterEntry | null>(null);
+  const [exporting, setExporting] = useState(false);
   const live = s.status === "active";
   const editable = s.status === "active" || s.status === "closed";
   // The API refuses self-edits; hide the control rather than invite a 403.
@@ -552,12 +581,23 @@ function RosterView({
                 size="sm"
                 variant="secondary"
                 className="h-10"
-                onClick={() => downloadCsv(s, rows, live)}
-                disabled={rows.length === 0}
-                aria-label="Download attendance list as CSV"
+                onClick={async () => {
+                  setExporting(true);
+                  try {
+                    await downloadAttendancePdf(s, roster.data as Roster);
+                  } catch {
+                    toast.error("Couldn't create the PDF. Try again.");
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+                loading={exporting}
+                loadingLabel="Creating PDF…"
+                disabled={numbered.length === 0}
+                aria-label="Download attendance register as PDF"
               >
-                <Download className="size-4" aria-hidden />
-                <span className="hidden sm:inline">CSV</span>
+                {!exporting && <Download className="size-4" aria-hidden />}
+                <span className="hidden sm:inline">PDF</span>
               </Button>
             </div>
           </div>
@@ -624,7 +664,14 @@ function RosterView({
                         <span className="text-xs font-normal text-muted">Exco</span>
                       )}
                     </p>
-                    <p className="flex items-center gap-1.5 truncate text-xs text-muted">
+                    <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted">
+                      <span className="shrink-0 sm:hidden">
+                        {e.attendance ? (
+                          <AttendanceBadge status={e.attendance.status} />
+                        ) : (
+                          <span>{live ? "Not yet" : "Absent"}</span>
+                        )}
+                      </span>
                       {e.stateCode}
                       {e.attendance && (
                         <>
@@ -641,12 +688,14 @@ function RosterView({
                       )}
                     </p>
                   </div>
-                  {e.attendance ? (
-                    <AttendanceBadge status={e.attendance.status} />
-                  ) : (
-                    <span className="text-xs text-muted">{live ? "Not yet" : "Absent"}</span>
-                  )}
-                  <div className="flex shrink-0 gap-1">
+                  <span className="hidden sm:inline-flex">
+                    {e.attendance ? (
+                      <AttendanceBadge status={e.attendance.status} />
+                    ) : (
+                      <span className="text-xs text-muted">{live ? "Not yet" : "Absent"}</span>
+                    )}
+                  </span>
+                  <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
                     {e.attendance ? (
                       <button
                         type="button"
@@ -658,7 +707,7 @@ function RosterView({
                       </button>
                     ) : null}
                     {editable && !isMe ? (
-                      <Button size="sm" variant="ghost" onClick={() => setEditing(e)}>
+                      <Button size="sm" variant="ghost" className="px-2.5 sm:px-3.5" onClick={() => setEditing(e)}>
                         {e.attendance ? "Change" : "Record"}
                       </Button>
                     ) : null}

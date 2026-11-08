@@ -26,11 +26,14 @@ interface Props {
   className?: string;
 }
 
-/** Read-only: marks come from attendance records, which executives correct from the session page. */
+/**
+ * One box per meeting day: at least `required` (the month's target), more when the group met more often.
+ * Read-only: marks come from attendance records, which executives correct from the session page.
+ */
 export function MonthlyBoxes({ required, sessions, marks, size = "md", className }: Props) {
   return (
-    <ul className={cn("flex gap-1.5", className)}>
-      {Array.from({ length: required }, (_, i) => {
+    <ul className={cn("flex flex-wrap gap-1.5", className)}>
+      {Array.from({ length: Math.max(required, sessions.length) }, (_, i) => {
         const session = sessions[i];
         const mark = MARKS[marks[i] ?? "pending"];
         const Icon = mark.icon;

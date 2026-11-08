@@ -171,20 +171,25 @@ export function CheckInPanel() {
   return (
     <div>
       {method === "gps" ? <GpsCheckIn onUseQr={() => setMethod("qr")} /> : <QrScanner />}
+      {/* The other method, said plainly: what it needs and when to reach for it. */}
       <button
         type="button"
         onClick={() => setMethod((m) => (m === "gps" ? "qr" : "gps"))}
-        className="mx-auto mt-4 flex items-center gap-1.5 text-sm font-medium text-brand hover:text-brand-deep"
+        className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-soft ring-1 ring-hairline transition hover:bg-surface"
       >
-        {method === "gps" ? (
-          <>
-            <QrCode className="size-4" aria-hidden /> Camera trouble? Scan the QR code instead
-          </>
-        ) : (
-          <>
-            <Navigation className="size-4" aria-hidden /> Use my location instead
-          </>
-        )}
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface text-brand">
+          {method === "gps" ? <QrCode className="size-5" aria-hidden /> : <Navigation className="size-5" aria-hidden />}
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-medium">
+            {method === "gps" ? "Location not working? Scan the QR code" : "Can't scan? Use your location"}
+          </span>
+          <span className="block text-xs text-muted">
+            {method === "gps"
+              ? "Point your camera at the code your executive is showing at the venue."
+              : "Check in with your phone's GPS while you're at the venue."}
+          </span>
+        </span>
       </button>
     </div>
   );

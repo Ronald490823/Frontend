@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, ArrowUpRight, BarChart3, Building2, IdCard, 
 import Link from "next/link";
 import { useActiveSessions } from "@/features/sessions/hooks";
 import { formatMonth, MonthlyBoxes, MonthlyLegend } from "@/components/attendance/monthly-boxes";
+import { ActivityTable } from "@/components/audit/activity-table";
 import { AdminOverview, RateMeter, rateBand } from "@/components/dashboard/admin-overview";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
@@ -60,6 +61,12 @@ export default function DashboardPage() {
           </StaggerItem>
         )}
       </Stagger>
+      {/* Every executive can see their own record of actions; LGIs see each exco's on their profile. */}
+      {isExecutive(me) && !isAreaAdmin(me) && (
+        <div className="mt-6">
+          <ActivityTable title="Your past actions" actorId={me.id} showActor={false} />
+        </div>
+      )}
     </PageContainer>
   );
 }

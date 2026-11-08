@@ -106,3 +106,19 @@ export function useRoster(id: string, { enabled, live }: { enabled: boolean; liv
     refetchIntervalInBackground: false,
   });
 }
+
+/** Soft delete (area LGI / super admin). A live session is closed first by the server. */
+export function useDeleteSession(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.delete(`/sessions/${id}`);
+    },
+    onSuccess: () => {
+      qc.removeQueries({ queryKey: ["session", id] });
+      qc.removeQueries({ queryKey: ["roster", id] });
+      void qc.invalidateQueries({ queryKey: ["sessions"] });
+      void qc.invalidateQueries({ queryKey: ["attendance"] });
+    },
+  });
+}

@@ -23,12 +23,13 @@ export function SessionFields({ form, locating, onCaptureLocation }: Props) {
     <>
       <TextField label="Title" error={errors.title?.message} {...form.register("title")} />
       <TextField label="Venue (optional)" placeholder="LGA Secretariat Hall" error={errors.venue?.message} {...form.register("venue")} />
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-3 sm:col-span-1">
-          <TextField label="Date" type="date" error={errors.date?.message} {...form.register("date")} />
+      {/* Date takes a full row on phones so Starts/Ends each get half the width (room for AM/PM). */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="col-span-2 sm:col-span-1">
+          <TextField label="Date" type="date" className="min-w-0" error={errors.date?.message} {...form.register("date")} />
         </div>
-        <TextField label="Starts" type="time" error={errors.startTime?.message} {...form.register("startTime")} />
-        <TextField label="Ends" type="time" error={errors.endTime?.message} {...form.register("endTime")} />
+        <TextField label="Starts" type="time" className="min-w-0 px-3" error={errors.startTime?.message} {...form.register("startTime")} />
+        <TextField label="Ends" type="time" className="min-w-0 px-3" error={errors.endTime?.message} {...form.register("endTime")} />
       </div>
       <TextField
         label="Late after (minutes)"

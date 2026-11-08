@@ -37,3 +37,10 @@ export function useToggleGroupActive() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["groups"] }),
   });
 }
+
+export function useGroup(id: string) {
+  return useQuery({
+    queryKey: ["groups", id],
+    queryFn: async () => (await api.get<Group>(`/groups/${id}`)).data,
+  });
+}

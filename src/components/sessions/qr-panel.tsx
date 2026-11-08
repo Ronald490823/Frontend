@@ -93,9 +93,10 @@ function CountdownRing({ fraction, seconds, size = 44, light = false }: { fracti
   );
 }
 
-function QrImage({ challenge, size }: { challenge: LiveChallenge | null; size: number }) {
+/** Fills its parent's width (square); the parent decides how big the code is. */
+function QrImage({ challenge }: { challenge: LiveChallenge | null }) {
   return (
-    <div className="relative grid place-items-center" style={{ width: size, height: size }}>
+    <div className="relative grid aspect-square w-full place-items-center">
       <AnimatePresence initial={false}>
         {challenge && (
           <motion.div
@@ -106,7 +107,7 @@ function QrImage({ challenge, size }: { challenge: LiveChallenge | null; size: n
             exit={{ opacity: 0, scale: 1.02, filter: "blur(8px)" }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
-            <QRCodeSVG value={challenge.payload} size={size} level="M" marginSize={0} fgColor="#172033" title="CDS check-in code" className="h-full w-full" />
+            <QRCodeSVG value={challenge.payload} size={512} level="M" marginSize={0} fgColor="#172033" title="CDS check-in code" className="h-full w-full" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -130,7 +131,7 @@ export function QrPanel({ sessionId, title, checkedIn, eligible }: { sessionId: 
 
   return (
     <>
-      <div className="rounded-3xl bg-white p-6 shadow-soft ring-1 ring-hairline">
+      <div className="rounded-3xl bg-white p-5 shadow-soft ring-1 ring-hairline sm:p-6">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-brand">Live check-in</p>
@@ -139,7 +140,7 @@ export function QrPanel({ sessionId, title, checkedIn, eligible }: { sessionId: 
           <CountdownRing fraction={fraction} seconds={seconds} />
         </div>
         <div className="relative mx-auto aspect-square w-full max-w-[18rem]">
-          <QrImage challenge={challenge} size={288} />
+          <QrImage challenge={challenge} />
           {(error || expired) && (
             <div role="alert" className="glass absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl p-6 text-center">
               <p className="text-sm font-medium">{error ? errorMessage(error) : "Code expired"}</p>
@@ -183,13 +184,16 @@ export function QrPanel({ sessionId, title, checkedIn, eligible }: { sessionId: 
                   transition={{ type: "spring", stiffness: 160, damping: 22 }}
                 >
                   <p className="mb-2 text-lg text-white/60">Scan to check in</p>
-                  <h2 className="mb-8 text-center text-3xl font-semibold tracking-tight sm:text-5xl">{title}</h2>
-                  <div className="rounded-[2.5rem] bg-white p-6 shadow-[0_40px_120px_-20px_rgb(45_212_191/0.5)] sm:p-8">
-                    <QrImage challenge={challenge} size={Math.min(520, typeof window !== "undefined" ? window.innerHeight * 0.55 : 420)} />
+                  <h2 className="mb-6 max-w-full break-words text-center text-2xl font-semibold tracking-tight sm:mb-8 sm:text-5xl">{title}</h2>
+                  <div className="rounded-[2rem] bg-white p-5 shadow-[0_40px_120px_-20px_rgb(45_212_191/0.5)] sm:p-8">
+                    {/* Fits a portrait phone (width-bound) and a projector (height-bound) alike. */}
+                    <div style={{ width: "min(520px, 55dvh, calc(100vw - 6rem))" }}>
+                      <QrImage challenge={challenge} />
+                    </div>
                   </div>
-                  <div className="mt-8 flex items-center gap-8">
+                  <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-8">
                     <CountdownRing fraction={fraction} seconds={seconds} size={56} light />
-                    <p className="text-2xl font-semibold tabular-nums">
+                    <p className="text-xl font-semibold tabular-nums sm:text-2xl">
                       <AnimatedNumber value={checkedIn} />
                       <span className="text-white/50"> / {eligible} checked in</span>
                     </p>

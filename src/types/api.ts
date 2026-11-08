@@ -114,7 +114,13 @@ export interface CdsSession {
   status: SessionStatus;
   createdAt: string;
   canManage: boolean;
+  /** Area LGI / super admin: may soft-delete this session. */
+  canDelete: boolean;
   myStatus: AttendanceStatus | null;
+  createdByName: string | null;
+  /** Null with an actualStart means it started by itself at its scheduled time. */
+  startedByName: string | null;
+  closedByName: string | null;
 }
 
 export interface Challenge {
@@ -210,5 +216,53 @@ export interface Correction {
   reason: string;
   changedById: string;
   changedByName: string;
+  createdAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  stateCode: string;
+  phone: string | null;
+  accountStatus: string;
+  createdAt: string;
+  lastLoginAt: string | null;
+  membership: {
+    id: string;
+    groupId: string;
+    groupName: string;
+    groupCode: string;
+    role: MembershipRole;
+    status: MembershipStatus;
+    requestedAt: string;
+    decidedAt: string | null;
+    decidedById: string | null;
+    decidedByName: string | null;
+    decisionReason: string | null;
+  } | null;
+  canDelete: boolean;
+  summary: { sessions: number; present: number; late: number; excused: number; absent: number; rate: number | null };
+  recent: {
+    sessionId: string;
+    title: string;
+    scheduledStart: string;
+    sessionStatus: SessionStatus;
+    status: AttendanceStatus | null;
+    method: VerificationMethod | null;
+    checkedInAt: string | null;
+  }[];
+}
+
+export interface Activity {
+  id: string;
+  action: string;
+  description: string;
+  actorId: string | null;
+  actorName: string | null;
+  groupId: string | null;
+  groupName: string | null;
+  targetType: string | null;
+  targetId: string | null;
   createdAt: string;
 }

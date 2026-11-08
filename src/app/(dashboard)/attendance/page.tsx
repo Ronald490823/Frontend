@@ -197,7 +197,7 @@ function ThisMonth() {
       <div className="flex items-baseline justify-between">
         <p className="text-sm font-medium">{formatMonth(monthly.data.month)}</p>
         <p className="text-sm text-muted">
-          <span className="font-semibold tabular-nums text-ink">{attended}</span> of {required} meetings
+          <span className="font-semibold tabular-nums text-ink">{attended}</span> of {Math.max(required, sessions.length)} meetings
         </p>
       </div>
       <MonthlyBoxes required={required} sessions={sessions} marks={marks} className="mt-4" />

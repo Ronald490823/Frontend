@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Crown, X } from "lucide-react";
+import { Check, ChevronRight, Crown, X } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/card";
@@ -43,20 +44,24 @@ export function MemberRow({ membership: m, canChangeRoles, isSelf, onReject, mon
       exit={{ opacity: 0, x: 40, transition: { duration: 0.25 } }}
       className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-4">
+      <Link
+        href={`/members/${m.userId}`}
+        className="group -m-2 flex min-w-0 flex-1 items-center gap-4 rounded-2xl p-2 transition-colors hover:bg-canvas"
+      >
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface text-sm font-semibold text-brand-deep">
           {initials(m.fullName)}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 truncate font-medium">
-            {m.fullName}
+            <span className="truncate group-hover:text-brand-deep">{m.fullName}</span>
             {m.role === "executive" && <Badge tone="info">Executive</Badge>}
           </p>
           <p className="truncate text-sm text-muted">
             {m.stateCode} · {m.email}
           </p>
         </div>
-      </div>
+        <ChevronRight className="size-4 shrink-0 text-ink/25 group-hover:text-brand" aria-hidden />
+      </Link>
       {monthly}
       <p className="text-xs text-muted sm:w-28 sm:text-right">{formatRelative(m.decidedAt ?? m.createdAt)}</p>
 

@@ -73,23 +73,24 @@ function Kpi({
   const body = (
     <div
       className={cn(
-        "h-full rounded-3xl bg-white p-5 shadow-soft ring-1 ring-hairline transition-shadow",
+        "h-full rounded-3xl bg-white p-4 shadow-soft sm:p-5 ring-1 ring-hairline transition-shadow",
         href && "hover:shadow-lift",
         attention && "ring-amber-500/40",
       )}
     >
-      <div className="flex items-center gap-2 text-sm font-medium text-muted">
-        <span className="grid size-8 place-items-center rounded-xl bg-surface text-brand">{icon}</span>
+      <div className="flex items-center gap-2 text-[13px] font-medium text-muted sm:text-sm">
+        <span className="grid size-7 shrink-0 place-items-center rounded-xl bg-surface text-brand sm:size-8">{icon}</span>
         {label}
       </div>
       {loading ? (
         <Skeleton className="mt-4 h-9 w-20" />
       ) : (
-        <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">
+        <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums sm:mt-3 sm:text-3xl">
           {typeof value === "number" ? <AnimatedNumber value={value} /> : (value ?? "—")}
         </p>
       )}
-      {sub && <p className="mt-1 text-xs text-muted">{sub}</p>}
+      {/* The sub-line is detail; on phones the number and label say enough. */}
+      {sub && <p className="mt-1 hidden text-xs text-muted sm:block">{sub}</p>}
     </div>
   );
   return href ? (
@@ -160,7 +161,7 @@ export function AdminOverview({ superAdmin }: { superAdmin: boolean }) {
           <h2 id="admin-overview" className="text-lg font-semibold tracking-tight">
             Jurisdiction overview
           </h2>
-          <p className="text-sm text-muted">This month across every CDS group you oversee.</p>
+          <p className="hidden text-sm text-muted sm:block">This month across every CDS group you oversee.</p>
         </div>
       </div>
 
@@ -285,18 +286,16 @@ function GroupTable({
     <Card className="overflow-hidden p-0">
       <div className="flex flex-col gap-3 border-b border-hairline p-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-medium">Groups at a glance</p>
-        <div className="-mx-1 overflow-x-auto px-1">
-          <Segmented
-            label="Sort groups"
-            value={sort}
-            onChange={onSort}
-            options={[
-              { value: "name", label: "A–Z" },
-              { value: "rate", label: "Lowest turnout" },
-              { value: "pending", label: "Most pending" },
-            ]}
-          />
-        </div>
+        <Segmented
+          label="Sort groups"
+          value={sort}
+          onChange={onSort}
+          options={[
+            { value: "name", label: "A–Z" },
+            { value: "rate", label: "Low turnout" },
+            { value: "pending", label: "Pending" },
+          ]}
+        />
       </div>
       {error ? (
         <ErrorState error={error} onRetry={onRetry} />
@@ -309,15 +308,43 @@ function GroupTable({
       ) : stats.length === 0 ? (
         <EmptyState icon={<Building2 className="size-6" />} title="No groups yet" body="Create a CDS group from the Groups page." />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[36rem] text-sm">
+        <>
+          {/* Phones: one compact row per group, no sideways scrolling. */}
+          <ul className="divide-y divide-hairline sm:hidden">
+            {stats.map((s) => (
+              <li key={s.group.id} className={cn("relative px-4 py-3 hover:bg-canvas", !s.group.isActive && "opacity-60")}>
+                <div className="flex items-center gap-2">
+                  <Link href={`/groups/${s.group.id}`} className="min-w-0 truncate text-sm font-medium after:absolute after:inset-0">
+                    {s.group.name}
+                  </Link>
+                  {liveByGroup.has(s.group.id) && <SessionBadge status="active" />}
+                  {!s.group.isActive && <Badge>Inactive</Badge>}
+                </div>
+                {s.loading ? (
+                  <Skeleton className="mt-2 h-4" />
+                ) : s.error ? (
+                  <p className="mt-1 text-xs text-muted">Couldn&apos;t load this group&apos;s numbers.</p>
+                ) : (
+                  <>
+                    <p className="mt-0.5 text-xs tabular-nums text-muted">
+                      {s.group.code} · {s.approved ?? "—"} members ·{" "}
+                      {s.pending ? <span className="font-semibold text-amber-700">{s.pending} pending</span> : "0 pending"}
+                      {s.atRisk > 0 && <span className="text-amber-700"> · {s.atRisk} missed 2+</span>}
+                    </p>
+                    <RateMeter rate={s.rate} className="mt-2" />
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+          <table className="hidden w-full text-sm sm:table">
             <thead>
               <tr className="text-left text-xs text-muted">
                 <th scope="col" className="px-4 py-2.5 font-medium">Group</th>
                 <th scope="col" className="px-3 py-2.5 text-right font-medium">Members</th>
                 <th scope="col" className="px-3 py-2.5 text-right font-medium">Pending</th>
                 <th scope="col" className="px-3 py-2.5 text-right font-medium">Held</th>
-                <th scope="col" className="w-44 px-4 py-2.5 font-medium">Attendance this month</th>
+                <th scope="col" className="w-40 px-4 py-2.5 font-medium">Attendance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
@@ -325,7 +352,9 @@ function GroupTable({
                 <tr key={s.group.id} className={cn(!s.group.isActive && "opacity-60")}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">{s.group.name}</span>
+                      <Link href={`/groups/${s.group.id}`} className="truncate font-medium hover:text-brand">
+                        {s.group.name}
+                      </Link>
                       {liveByGroup.has(s.group.id) && <SessionBadge status="active" />}
                       {!s.group.isActive && <Badge>Inactive</Badge>}
                     </div>
@@ -366,9 +395,9 @@ function GroupTable({
               ))}
             </tbody>
           </table>
-        </div>
+        </>
       )}
-      <p className="border-t border-hairline px-4 py-3 text-xs text-muted">
+      <p className="hidden border-t border-hairline px-4 py-3 text-xs text-muted sm:block">
         Attendance = meetings attended out of meetings marked this month. 75%+ healthy · 50–74% watch · under 50% low.
       </p>
     </Card>
