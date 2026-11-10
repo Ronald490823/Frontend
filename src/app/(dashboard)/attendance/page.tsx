@@ -49,8 +49,9 @@ export default function AttendancePage() {
         description={hasGroup ? `${me?.membership?.groupName} CDS` : undefined}
       />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-        <div className="space-y-5">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+        {/* Phones and tablets: a centred column of check-in cards rather than edge-to-edge stretch. */}
+        <div className="mx-auto w-full max-w-md space-y-5 lg:max-w-none">
           {hasGroup ? (
             <CheckInArea />
           ) : (

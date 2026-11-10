@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { PageContainer } from "@/components/layout/page-header";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { RevealText } from "@/components/motion/reveal-text";
+import { ExportDialog } from "@/components/sessions/export-dialog";
 import { EditSessionDialog } from "@/components/sessions/edit-session-dialog";
 import { HistoryDialog } from "@/components/sessions/history-dialog";
 import { ManualAttendanceDialog } from "@/components/sessions/manual-attendance-dialog";
@@ -50,7 +51,6 @@ import {
   formatTime,
   initials,
 } from "@/lib/formatters";
-import { downloadAttendancePdf } from "@/lib/attendance-pdf";
 import { cn } from "@/lib/utils";
 import type { CdsSession, Roster, RosterEntry } from "@/types/api";
 
@@ -581,24 +581,14 @@ function RosterView({
                 size="sm"
                 variant="secondary"
                 className="h-10"
-                onClick={async () => {
-                  setExporting(true);
-                  try {
-                    await downloadAttendancePdf(s, roster.data as Roster);
-                  } catch {
-                    toast.error("Couldn't create the PDF. Try again.");
-                  } finally {
-                    setExporting(false);
-                  }
-                }}
-                loading={exporting}
-                loadingLabel="Creating PDF…"
+                onClick={() => setExporting(true)}
                 disabled={numbered.length === 0}
-                aria-label="Download attendance register as PDF"
+                aria-label="Export attendance"
               >
-                {!exporting && <Download className="size-4" aria-hidden />}
-                <span className="hidden sm:inline">PDF</span>
+                <Download className="size-4" aria-hidden />
+                <span className="hidden sm:inline">Export</span>
               </Button>
+              <ExportDialog open={exporting} onClose={() => setExporting(false)} session={s} roster={roster.data} />
             </div>
           </div>
           <div className="-mx-1 overflow-x-auto px-1 pb-0.5">

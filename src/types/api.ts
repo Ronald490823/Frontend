@@ -241,7 +241,13 @@ export interface UserProfile {
     decidedByName: string | null;
     decisionReason: string | null;
   } | null;
+  /** Set when the account is soft-deleted (only super admins still see it). */
+  deletedAt: string | null;
   canDelete: boolean;
+  /** Super admin: may correct profile details. */
+  canEdit: boolean;
+  /** Super admin: may reactivate this deleted account. */
+  canRestore: boolean;
   summary: { sessions: number; present: number; late: number; excused: number; absent: number; rate: number | null };
   recent: {
     sessionId: string;
@@ -252,6 +258,32 @@ export interface UserProfile {
     method: VerificationMethod | null;
     checkedInAt: string | null;
   }[];
+}
+
+/** A row in the super admin's account directory. */
+export interface AdminUser {
+  id: string;
+  fullName: string;
+  email: string;
+  stateCode: string;
+  phone: string | null;
+  accountStatus: string;
+  adminRoles: ("lgi" | "super_admin")[];
+  groupName: string | null;
+  membershipRole: MembershipRole | null;
+  membershipStatus: MembershipStatus | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+  deletedAt: string | null;
+}
+
+export type AccountState = "active" | "deleted" | "all";
+
+export interface AdminUpdateUser {
+  fullName?: string;
+  email?: string;
+  stateCode?: string;
+  phone?: string;
 }
 
 export interface Activity {

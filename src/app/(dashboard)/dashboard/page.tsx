@@ -28,7 +28,7 @@ export default function DashboardPage() {
       <PageHeader eyebrow={greeting()} title={`Hello, ${me.fullName.split(" ")[0]}.`} description={primaryRoleLabel(me)} />
       <LiveSessionBanner />
       {isAreaAdmin(me) && <AdminOverview superAdmin={isSuperAdmin(me)} />}
-      <Stagger className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <Stagger className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2 xl:grid-cols-3">
         <StaggerItem>
           <ProfileCard me={me} />
         </StaggerItem>

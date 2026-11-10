@@ -49,7 +49,7 @@ export default function GroupsPage() {
       />
 
       {groups.isPending ? (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-44 rounded-3xl" />
           ))}
@@ -68,7 +68,7 @@ export default function GroupsPage() {
           />
         </Card>
       ) : (
-        <Stagger className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <Stagger className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2 xl:grid-cols-3">
           {groups.data.map((g) => (
             <StaggerItem key={g.id}>
               <GroupCard group={g} />

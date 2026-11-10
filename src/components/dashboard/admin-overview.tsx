@@ -226,7 +226,9 @@ export function AdminOverview({ superAdmin }: { superAdmin: boolean }) {
         )}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      {/* Explicit minmax(0,1fr) columns: an implicit track would grow to fit long, truncated titles
+          and push the cards past the screen edge on phones. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <GroupTable
           stats={sorted}
           liveByGroup={liveByGroup}
@@ -236,7 +238,7 @@ export function AdminOverview({ superAdmin }: { superAdmin: boolean }) {
           error={groups.isError ? groups.error : null}
           onRetry={() => void groups.refetch()}
         />
-        <div className="space-y-6">
+        <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-6 md:grid-cols-3 xl:grid-cols-[minmax(0,1fr)]">
           <SessionList
             title="Live now"
             icon={<Radio className="size-4" />}
@@ -283,8 +285,8 @@ function GroupTable({
   onRetry: () => void;
 }) {
   return (
-    <Card className="overflow-hidden p-0">
-      <div className="flex flex-col gap-3 border-b border-hairline p-4 sm:flex-row sm:items-center sm:justify-between">
+    <Card className="min-w-0 overflow-hidden p-0">
+      <div className="flex flex-col items-center gap-3 border-b border-hairline p-4 text-center sm:flex-row sm:justify-between sm:text-left">
         <p className="text-sm font-medium">Groups at a glance</p>
         <Segmented
           label="Sort groups"
@@ -420,7 +422,7 @@ function SessionList({
   relative?: boolean;
 }) {
   return (
-    <Card className="p-0">
+    <Card className="min-w-0 overflow-hidden p-0">
       <div className="flex items-center gap-2 border-b border-hairline px-4 py-3 text-sm font-medium">
         <span className="text-brand">{icon}</span> {title}
         {!loading && sessions.length > 0 && <span className="ml-auto text-xs text-muted">{sessions.length}</span>}

@@ -50,6 +50,19 @@ export const profileSchema = z.object({
 });
 export type ProfileValues = z.infer<typeof profileSchema>;
 
+/** Super admin correcting someone else's account. */
+export const adminUserSchema = z.object({
+  fullName: z.string().trim().min(2, "Enter a full name.").max(120),
+  email: z.string().trim().email("Enter a valid email address."),
+  stateCode: z
+    .string()
+    .transform(normalizeStateCode)
+    .refine((v) => STATE_CODE_RE.test(v), "Use the format LA/24A/1234."),
+  phone: z.string().trim().max(32).optional().or(z.literal("")),
+});
+export type AdminUserInput = z.input<typeof adminUserSchema>;
+export type AdminUserValues = z.output<typeof adminUserSchema>;
+
 export const groupSchema = z.object({
   areaId: z.string().uuid("Choose an area."),
   name: z.string().trim().min(2, "Enter a group name.").max(120),

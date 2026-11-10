@@ -34,7 +34,7 @@ export default function SettingsPage() {
   return (
     <PageContainer>
       <PageHeader eyebrow="Account" title="Settings" description="Update how your name and phone number appear to your executives." />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
           <form onSubmit={onSubmit} noValidate className="space-y-5">
             <TextField label="Full name" autoComplete="name" error={errors.fullName?.message} {...form.register("fullName")} />

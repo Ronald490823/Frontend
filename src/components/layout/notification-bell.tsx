@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useMarkNotificationsRead, useNotifications, useUnreadCount } from "@/features/notifications/hooks";
@@ -64,14 +64,38 @@ export function NotificationBell({ className, placement = "bottom" }: { classNam
       </button>
 
       {open && (
+        // Lined up with the page, not the bell: on phones it spans the content gutters under the
+        // top bar; on desktop it opens beside the sidebar, bottom-aligned with the account row.
+        // (Both chrome bars use backdrop-filter, which makes them the containing block for `fixed`;
+        // they sit at the viewport's top/left edge, so these offsets land the same either way.)
         <div
+          role="dialog"
+          aria-label="Notifications"
           className={cn(
-            "absolute right-0 z-40 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl bg-white shadow-lift ring-1 ring-hairline",
-            placement === "top" ? "bottom-full mb-2" : "mt-2",
+            "fixed z-40 overflow-hidden rounded-3xl bg-white shadow-lift ring-1 ring-hairline",
+            placement === "top"
+              ? "bottom-6 left-[calc(17rem+1.5rem)] w-96"
+              : "inset-x-5 top-16 sm:left-auto sm:right-8 sm:w-96",
           )}
         >
-          <div className="border-b border-hairline px-4 py-3 text-sm font-semibold">Notifications</div>
-          <div className="max-h-96 overflow-y-auto">
+          <div className="flex items-center justify-between border-b border-hairline py-2 pl-4 pr-2">
+            <p className="text-sm font-semibold">Notifications</p>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close notifications"
+              className="grid size-8 place-items-center rounded-full text-ink/50 transition hover:bg-ink/5 hover:text-ink"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          </div>
+          <div
+            className={cn(
+              "overflow-y-auto overscroll-contain",
+              // Phones: stop short of the bottom tab bar.
+              placement === "top" ? "max-h-[min(28rem,calc(100dvh-8rem))]" : "max-h-[calc(100dvh-13rem)]",
+            )}
+          >
             {list.isPending ? (
               <p className="px-4 py-8 text-center text-sm text-muted">Loading…</p>
             ) : items.length === 0 ? (

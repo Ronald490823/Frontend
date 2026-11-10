@@ -1,13 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Building2, CalendarClock, LayoutGrid, LogOut, ScanLine, Settings, Users } from "lucide-react";
+import { Building2, CalendarClock, LayoutGrid, LogOut, ScanLine, Settings, UserCog, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useLogout } from "@/features/auth/hooks";
 import { initials } from "@/lib/formatters";
-import { canManageMembers, isAreaAdmin, primaryRoleLabel } from "@/lib/permissions";
+import { canManageMembers, isAreaAdmin, isSuperAdmin, primaryRoleLabel } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { Me } from "@/types/api";
 import { Brand } from "./brand";
@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { href: "/attendance", label: "Check in", icon: ScanLine, show: (me) => me.membership?.status === "approved" },
   { href: "/members", label: "Members", icon: Users, show: canManageMembers },
   { href: "/groups", label: "Groups", icon: Building2, show: isAreaAdmin },
+  { href: "/accounts", label: "Accounts", icon: UserCog, show: isSuperAdmin },
   { href: "/settings", label: "Settings", icon: Settings, show: () => true },
 ];
 
@@ -43,7 +44,8 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
       {/* Desktop sidebar */}
-      <aside className="glass sticky top-0 hidden h-dvh flex-col border-r border-hairline px-4 py-6 lg:flex">
+      {/* z-30 keeps the notification panel (which opens beside the sidebar) above page content. */}
+      <aside className="glass sticky top-0 z-30 hidden h-dvh flex-col border-r border-hairline px-4 py-6 lg:flex">
         <Brand href="/dashboard" className="px-3" />
         <nav aria-label="Primary" className="mt-10 flex-1 space-y-1">
           {items.map(({ href, label, icon: Icon }) => {
