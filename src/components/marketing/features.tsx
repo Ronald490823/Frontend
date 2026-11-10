@@ -27,9 +27,9 @@ const FEATURES = [
   },
   {
     icon: FileLock2,
-    title: "Private excuse documents",
-    body: "Medical notes and duty letters stay private, visible only to the people who review them.",
-    className: "md:col-span-2 bg-gradient-to-br from-blue-50/80 to-white",
+title: "Excuse and unavailability requests",
+body: "Submit excuses when you're unable to attend CDS or participate in field work, with requests available for review and approval.",
+className: "md:col-span-2 bg-gradient-to-br from-blue-50/80 to-white",
   },
   {
     icon: BarChart3,

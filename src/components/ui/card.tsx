@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-3xl bg-white p-6 shadow-soft ring-1 ring-hairline", className)} {...props} />;
+  return <div className={cn("rounded-3xl p-6 shadow-soft ring-1 ring-hairline", className)} {...props} />;
 }
 
 export function Badge({
