@@ -56,7 +56,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       queryClient.clear();
       if (wasSignedIn) {
         toast.warning("Your session has expired. Please sign in again.", { id: "session-expired" });
-        router.replace("/login");
+        router.replace("/");
       }
     });
     return () => setSessionExpiredHandler(null);

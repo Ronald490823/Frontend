@@ -20,10 +20,18 @@ export interface CheckInInput {
   accuracyM?: number;
 }
 
+// The API rejects accuracyM above 10 km with "Some fields are invalid". Desktops and
+// Wi-Fi/IP-based fixes often report far more than that, and the server only credits the
+// first 50 m anyway, so clamp instead of failing the whole check-in.
+const MAX_ACCURACY_M = 10_000;
+function clampAccuracy(accuracyM?: number) {
+  return accuracyM == null || !Number.isFinite(accuracyM) ? undefined : Math.min(Math.max(accuracyM, 0), MAX_ACCURACY_M);
+}
+
 export function useCheckIn() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CheckInInput) => (await api.post<CheckInResult>("/attendance/checkin", input)).data,
+    mutationFn: async (input: CheckInInput) => (await api.post<CheckInResult>("/attendance/checkin", { ...input, accuracyM: clampAccuracy(input.accuracyM) })).data,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["attendance", "me"] });
       void qc.invalidateQueries({ queryKey: ["sessions"] });
@@ -43,7 +51,8 @@ export interface LocationCheckInInput {
 export function useLocationCheckIn() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: LocationCheckInInput) => (await api.post<CheckInResult>("/attendance/checkin/location", input)).data,
+    mutationFn: async (input: LocationCheckInInput) => (await api.post<CheckInResult>("/attendance/checkin/location", { ...input, accuracyM: clampAccuracy(input.accuracyM) }))
+        .data,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["attendance", "me"] });
       void qc.invalidateQueries({ queryKey: ["sessions"] });
