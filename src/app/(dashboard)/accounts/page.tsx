@@ -1,10 +1,11 @@
 "use client";
 
-import { ArchiveRestore, ChevronLeft, ChevronRight, Pencil, Search, Trash2, UserCog } from "lucide-react";
+import { ArchiveRestore, ChevronLeft, ChevronRight, Pencil, Search, ShieldPlus, Trash2, UserCog } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
+import { AddSuperAdminDialog } from "@/components/members/add-super-admin-dialog";
 import { EditUserDialog } from "@/components/members/edit-user-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge, Card, EmptyState, Skeleton } from "@/components/ui/card";
@@ -37,6 +38,7 @@ export default function AccountsPage() {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [adding, setAdding] = useState(false);
   const q = useDebounced(search.trim());
   const list = useAdminUsers({ q, state, page }, allowed);
   const del = useDeleteUser();
@@ -73,6 +75,11 @@ export default function AccountsPage() {
         eyebrow="Administration"
         title="Accounts"
         description="Every account on the platform. Correct details, delete accounts, or bring deleted ones back."
+        actions={
+          <Button onClick={() => setAdding(true)}>
+            <ShieldPlus className="size-4" aria-hidden /> Add super admin
+          </Button>
+        }
       />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -149,6 +156,7 @@ export default function AccountsPage() {
       </Card>
 
       <EditUserDialog user={editing} onClose={() => setEditing(null)} />
+      <AddSuperAdminDialog open={adding} onClose={() => setAdding(false)} />
       <ConfirmDialog
         open={!!pending}
         title={pending ? `${pending.kind === "delete" ? "Delete" : "Reactivate"} ${pending.user.fullName}?` : ""}

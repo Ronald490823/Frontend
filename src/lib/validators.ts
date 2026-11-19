@@ -63,6 +63,16 @@ export const adminUserSchema = z.object({
 export type AdminUserInput = z.input<typeof adminUserSchema>;
 export type AdminUserValues = z.output<typeof adminUserSchema>;
 
+/** Super admin registering another super admin. */
+export const superAdminSchema = adminUserSchema
+  .extend({ password: passwordSchema, confirmPassword: z.string() })
+  .refine((v) => v.password === v.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords don't match.",
+  });
+export type SuperAdminInput = z.input<typeof superAdminSchema>;
+export type SuperAdminValues = z.output<typeof superAdminSchema>;
+
 export const groupSchema = z.object({
   areaId: z.string().uuid("Choose an area."),
   name: z.string().trim().min(2, "Enter a group name.").max(120),

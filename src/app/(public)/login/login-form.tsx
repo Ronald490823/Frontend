@@ -90,6 +90,11 @@ export function LoginForm() {
           Create an account
         </Link>
       </p>
+      <p className="mt-3 text-center text-sm text-muted">
+        <Link href="/admin/login" className="hover:text-ink hover:underline">
+          Super admin sign in
+        </Link>
+      </p>
     </div>
   );
 }

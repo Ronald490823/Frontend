@@ -2,7 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import type { AccountState, AdminUpdateUser, AdminUser, Page, UserProfile } from "@/types/api";
+import type { AccountState, AdminUpdateUser, AdminUser, CreateSuperAdmin, Page, UserProfile } from "@/types/api";
 
 /** A member's profile, approval and attendance (for whoever manages their group). */
 export function useUserProfile(id: string) {
@@ -70,5 +70,16 @@ export function useRestoreUser() {
   return useMutation({
     mutationFn: async (id: string) => (await api.post<UserProfile>(`/users/${id}/restore`)).data,
     onSuccess: (profile) => refresh(profile),
+  });
+}
+
+/** Super admin: register another super admin (approved immediately). */
+export function useCreateSuperAdmin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: CreateSuperAdmin) => (await api.post<AdminUser>("/users/super-admins", body)).data,
+    // The dialog shows its own errors.
+    meta: { silentError: true },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
   });
 }

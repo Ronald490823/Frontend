@@ -286,6 +286,14 @@ export interface AdminUpdateUser {
   phone?: string;
 }
 
+export interface CreateSuperAdmin {
+  fullName: string;
+  email: string;
+  stateCode: string;
+  phone: string | null;
+  password: string;
+}
+
 export interface Activity {
   id: string;
   action: string;
